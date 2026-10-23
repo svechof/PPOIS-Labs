@@ -29,7 +29,40 @@ bool parse_double(const std::string& text, double& value) {
 }
 char uppercase(char value) { return static_cast<char>(std::toupper(static_cast<unsigned char>(value))); }
 void print_error(std::ostream& output, const std::exception& error) {
-    output << messages::kErrorPrefix << error.what() << '\n';
+    const std::string details = error.what();
+    std::string message = "Не удалось выполнить действие. Проверьте введённые данные.";
+
+    if (details.find("Unknown operation") != std::string::npos) {
+        message = "Неизвестная операция. Используйте +, -, * или /.";
+    } else if (details.find("Invalid board size:") != std::string::npos) {
+        message = "Недопустимый размер поля. Допустимый размер — от 3 до 10.";
+    } else if (details.find("Cell is already occupied:") != std::string::npos) {
+        message = "Клетка уже занята. Выберите другую клетку.";
+    } else if (details.find("Position out of range:") != std::string::npos) {
+        message = "Координаты выходят за пределы игрового поля.";
+    } else if (details.find("Invalid mark:") != std::string::npos) {
+        message = "Недопустимая метка. Используйте X, O или точку.";
+    } else if (details.find("Invalid board format:") != std::string::npos) {
+        message = "Неверный формат игрового поля.";
+    } else if (details.find("Invalid degree:") != std::string::npos ||
+               details.find("Invalid polynomial degree:") != std::string::npos) {
+        message = "Недопустимая степень многочлена. Допустимы значения от 0 до 1000.";
+    } else if (details.find("Coefficient count mismatch:") != std::string::npos ||
+               details.find("Invalid coefficient count:") != std::string::npos) {
+        message = "Количество коэффициентов не соответствует степени многочлена.";
+    } else if (details.find("Coefficient index out of range:") != std::string::npos) {
+        message = "Индекс коэффициента выходит за допустимые границы.";
+    } else if (details.find("Non-finite coefficient") != std::string::npos) {
+        message = "Коэффициент должен быть конечным числом.";
+    } else if (details.find("Division by zero polynomial") != std::string::npos) {
+        message = "Деление на нулевой многочлен невозможно.";
+    } else if (details.find("Invalid polynomial format:") != std::string::npos) {
+        message = "Неверный формат многочлена. Проверьте степень и коэффициенты.";
+    } else if (details == "Ввод завершён") {
+        message = details;
+    }
+
+    output << messages::kErrorPrefix << message << '\n';
 }
 void require_single_line_end(std::istringstream& input) {
     input >> std::ws;
@@ -238,7 +271,17 @@ void TicTacToeMenu::write_cell() {
 }
 void TicTacToeMenu::place_mark() {
     const tic_tac_toe::Position position = read_position();
-    game_.place(position, read_mark());
+    const tic_tac_toe::Mark mark = read_mark();
+
+    if (!game_.can_place(position, mark)) {
+        output_ << messages::kErrorPrefix
+                << "Клетка (" << position.row + 1U
+                << ", " << position.col + 1U
+                << ") уже занята.\n";
+        return;
+    }
+
+    game_.place(position, mark);
     show_board();
 }
 void TicTacToeMenu::check_winner() const {

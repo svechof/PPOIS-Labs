@@ -77,7 +77,7 @@ TEST(CliTests, C08_TicTacToeMenu_AllItemsSmoke) {
     const std::string rendered = output.str();
     EXPECT_NE(rendered.find("Можно"), std::string::npos);
     EXPECT_NE(rendered.find("Поле"), std::string::npos);
-    EXPECT_NE(rendered.find("Cell is already occupied: (0, 0)"), std::string::npos);
+    EXPECT_NE(rendered.find("Клетка (1, 1) уже занята."), std::string::npos);
     EXPECT_NE(rendered.find("Текущий текст поля"), std::string::npos);
 }
 TEST(CliTests, C09_PolynomialMenu_FullScenario) {
@@ -104,14 +104,14 @@ TEST(CliTests, C09_PolynomialMenu_FullScenario) {
     EXPECT_NE(text.find("x^2 - x"), std::string::npos);
     EXPECT_NE(text.find("x^3 - x^2 - x + 1"), std::string::npos);
     EXPECT_NE(text.find("остаток отброшен"), std::string::npos);
-    EXPECT_NE(text.find("Division by zero polynomial"), std::string::npos);
+    EXPECT_NE(text.find("Деление на нулевой многочлен невозможно."), std::string::npos);
 }
 TEST(CliTests, C10_PolynomialMenu_DivideByZeroShowsError) {
     std::istringstream input("2\n10\n0\n0\n");
     std::ostringstream output;
     Application application(input, output);
     application.run();
-    EXPECT_NE(output.str().find("Ошибка: Division by zero polynomial"), std::string::npos);
+    EXPECT_NE(output.str().find("Ошибка: Деление на нулевой многочлен невозможно."), std::string::npos);
     EXPECT_NE(output.str().find("Меню «Многочлены»"), std::string::npos);
 }
 TEST(CliTests, C11_PolynomialMenu_BadInputShowsError) {
@@ -119,7 +119,7 @@ TEST(CliTests, C11_PolynomialMenu_BadInputShowsError) {
     std::ostringstream output;
     Application application(input, output);
     application.run();
-    EXPECT_NE(output.str().find("Ошибка: Invalid polynomial format"), std::string::npos);
+    EXPECT_NE(output.str().find("Ошибка: Неверный формат многочлена. Проверьте степень и коэффициенты."), std::string::npos);
     EXPECT_NE(output.str().find("A: 1 1 2, 2x + 1"), std::string::npos);
 }
 TEST(CliTests, C12_BoardView_ExactRendering) {
