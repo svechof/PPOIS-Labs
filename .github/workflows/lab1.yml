@@ -1,0 +1,330 @@
+name: Lab 1 CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "lab1/**"
+      - "README.md"
+      - "specification.md"
+      - ".github/workflows/lab1.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "lab1/**"
+      - "README.md"
+      - "specification.md"
+      - ".github/workflows/lab1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-lint:
+    name: Format and static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install quality tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format clang-tidy clang-tools cmake ninja-build g++ ccache
+      - name: Cache dependencies and compiler cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            lab1/.deps
+            ~/.cache/ccache
+          key: quality-${{ runner.os }}-${{ hashFiles('lab1/CMakeLists.txt') }}
+          restore-keys: quality-${{ runner.os }}-
+      - name: Configure temporary clang-tidy rules
+        run: |
+          cat > lab1/.clang-tidy <<'TIDY'
+          Checks: >-
+            -*,bugprone-*,clang-analyzer-*,misc-*,performance-*,
+            readability-*,cppcoreguidelines-special-member-functions,
+            cppcoreguidelines-pro-type-member-init,
+            -modernize-use-trailing-return-type,
+            -misc-non-private-member-variables-in-classes,
+            -readability-function-size,-readability-magic-numbers
+          WarningsAsErrors: '*'
+          HeaderFilterRegex: '(lab1/include|lab1/src|lab1/cli)/.*'
+          CheckOptions:
+            readability-identifier-length.MinimumVariableNameLength: '3'
+            readability-identifier-length.MinimumParameterNameLength: '3'
+            readability-identifier-length.MinimumLoopCounterNameLength: '3'
+            readability-identifier-naming.NamespaceCase: lower_case
+            readability-identifier-naming.ClassCase: CamelCase
+            readability-identifier-naming.StructCase: CamelCase
+            readability-identifier-naming.EnumCase: CamelCase
+            readability-identifier-naming.EnumConstantCase: CamelCase
+            readability-identifier-naming.EnumConstantPrefix: k
+            readability-identifier-naming.FunctionCase: lower_case
+            readability-identifier-naming.MethodCase: lower_case
+            readability-identifier-naming.VariableCase: lower_case
+            readability-identifier-naming.ParameterCase: lower_case
+            readability-identifier-naming.PrivateMemberCase: lower_case
+            readability-identifier-naming.PrivateMemberSuffix: _
+            readability-identifier-naming.ConstexprVariableCase: CamelCase
+            readability-identifier-naming.ConstexprVariablePrefix: k
+            cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions: true
+            cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: true
+          TIDY
+      - name: Configure lint compilation database
+        run: cmake -S lab1 -B lab1/build-lint -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DLAB1_BUILD_TESTS=OFF
+      - name: Verify source formatting
+        run: find lab1/include lab1/src lab1/cli lab1/tests -type f \( -name '*.h' -o -name '*.cpp' \) -print0 | xargs -0 clang-format --dry-run --Werror
+      - name: Run clang-tidy
+        run: clang-tidy -p lab1/build-lint -quiet lab1/src/tic_tac_toe/tic_tac_toe.cpp lab1/src/polynomial/polynomial.cpp lab1/cli/cli.cpp lab1/cli/main.cpp
+      - name: Check project style
+        run: lab1/scripts/check_style.sh
+      - name: Check domain independence
+        run: lab1/scripts/check_independence.sh
+
+  build-test:
+    name: Build and test (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: GCC
+            cxx: g++
+          - compiler: Clang
+            cxx: clang++
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential clang ccache
+      - name: Cache dependencies and compiler cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            lab1/.deps
+            ~/.cache/ccache
+          key: build-${{ matrix.compiler }}-${{ runner.os }}-${{ hashFiles('lab1/CMakeLists.txt') }}
+          restore-keys: build-${{ matrix.compiler }}-${{ runner.os }}-
+      - name: Configure
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: cmake -S lab1 -B lab1/build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DLAB1_BUILD_TESTS=ON
+      - name: Build both domains, CLI and tests
+        run: cmake --build lab1/build --parallel 2
+      - name: Run tests
+        run: ctest --test-dir lab1/build --output-on-failure
+
+  sanitizers:
+    name: ASan and UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ ccache
+      - name: Cache dependencies and compiler cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            lab1/.deps
+            ~/.cache/ccache
+          key: sanitizers-${{ runner.os }}-${{ hashFiles('lab1/CMakeLists.txt') }}
+          restore-keys: sanitizers-${{ runner.os }}-
+      - name: Configure
+        run: cmake -S lab1 -B lab1/build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DLAB1_BUILD_TESTS=ON -DLAB1_SANITIZE=ON
+      - name: Build
+        run: cmake --build lab1/build-asan --parallel 2
+      - name: Run instrumented tests
+        env:
+          ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: ctest --test-dir lab1/build-asan --output-on-failure
+      - name: Run CLI smoke scenarios
+        run: lab1/scripts/smoke_test.sh lab1/build-asan/bin/lab1_cli
+
+  coverage:
+    name: Coverage over 90 percent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ python3-pip
+      - name: Install gcovr
+        run: python3 -m pip install --break-system-packages gcovr
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: lab1/.deps
+          key: coverage-${{ runner.os }}-${{ hashFiles('lab1/CMakeLists.txt') }}
+          restore-keys: coverage-${{ runner.os }}-
+      - name: Configure with coverage
+        run: cmake -S lab1 -B lab1/build-cov -G Ninja -DCMAKE_BUILD_TYPE=Debug -DLAB1_COVERAGE=ON -DLAB1_BUILD_TESTS=ON
+      - name: Build and run tests
+        run: |
+          cmake --build lab1/build-cov --parallel 2
+          ctest --test-dir lab1/build-cov --output-on-failure
+      - name: Check tic_tac_toe coverage
+        run: lab1/scripts/coverage.sh lab1/build-cov tic_tac_toe
+      - name: Check polynomial coverage
+        run: lab1/scripts/coverage.sh lab1/build-cov polynomial
+      - name: Check project coverage
+        run: lab1/scripts/coverage.sh lab1/build-cov project
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lab1/coverage/
+          if-no-files-found: error
+          retention-days: 30
+
+  docs:
+    name: Generate Doxygen documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install documentation tools
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz zip
+      - name: Generate documentation
+        run: doxygen lab1/Doxyfile
+      - name: Verify generated classes
+        run: |
+          grep -q 'TicTacToe' lab1/docs/html/annotated.html
+          grep -q 'Polynomial' lab1/docs/html/annotated.html
+      - name: Package HTML documentation
+        run: zip -qr lab1-docs.zip lab1/docs/html
+      - name: Upload documentation directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-html
+          path: lab1/docs/html/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload documentation archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab1-docs-zip
+          path: lab1-docs.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  package:
+    name: Package static Linux CLI
+    runs-on: ubuntu-latest
+    needs: [format-lint, build-test, sanitizers, coverage, docs]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ binutils ccache
+      - name: Cache dependencies and compiler cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            lab1/.deps
+            ~/.cache/ccache
+          key: package-${{ runner.os }}-${{ hashFiles('lab1/CMakeLists.txt') }}
+          restore-keys: package-${{ runner.os }}-
+      - name: Configure static Release
+        run: cmake -S lab1 -B lab1/build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DLAB1_BUILD_TESTS=OFF -DLAB1_STATIC=ON
+      - name: Build static executable
+        run: cmake --build lab1/build-release --parallel 2
+      - name: Create package and checksums
+        run: |
+          mkdir -p package
+          cp lab1/build-release/bin/lab1_cli package/lab1_cli
+          strip package/lab1_cli
+          cp lab1/scripts/smoke_test.sh package/smoke_test.sh
+          cp -r lab1/docs/demo package/demo
+          cp README.md package/README.md
+          tar -czf lab1-cli-linux-x86_64.tar.gz -C package .
+          sha256sum lab1-cli-linux-x86_64.tar.gz > SHA256SUMS
+      - name: Upload CLI package and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab1-cli
+          path: |
+            lab1-cli-linux-x86_64.tar.gz
+            SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
+
+  smoke-clean-container:
+    name: Smoke test in clean Ubuntu container
+    runs-on: ubuntu-latest
+    needs: package
+    container:
+      image: ubuntu:22.04
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lab1-cli
+      - name: Extract and run smoke tests without development tools
+        run: |
+          tar -xzf lab1-cli-linux-x86_64.tar.gz
+          chmod +x ./lab1_cli ./smoke_test.sh
+          ./smoke_test.sh ./lab1_cli
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: smoke-clean-container
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download CLI package
+        uses: actions/download-artifact@v4
+        with:
+          name: lab1-cli
+          path: release-assets
+      - name: Download documentation archive
+        uses: actions/download-artifact@v4
+        with:
+          name: lab1-docs-zip
+          path: release-assets
+      - name: Publish assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/lab1-cli-linux-x86_64.tar.gz
+            release-assets/SHA256SUMS
+            release-assets/lab1-docs.zip
+          generate_release_notes: true
+
+  verify-release:
+    name: Download and verify published release
+    runs-on: ubuntu-latest
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+    container:
+      image: ubuntu:22.04
+    steps:
+      - name: Install curl and certificates
+        run: apt-get update && apt-get install -y curl ca-certificates tar coreutils
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -o lab1-cli-linux-x86_64.tar.gz "https://github.com/${REPOSITORY}/releases/download/${RELEASE_TAG}/lab1-cli-linux-x86_64.tar.gz"
+          curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -o SHA256SUMS "https://github.com/${REPOSITORY}/releases/download/${RELEASE_TAG}/SHA256SUMS"
+      - name: Verify checksum and run published binary
+        run: |
+          sha256sum -c SHA256SUMS
+          mkdir -p published
+          tar -xzf lab1-cli-linux-x86_64.tar.gz -C published
+          chmod +x published/lab1_cli published/smoke_test.sh
+          published/smoke_test.sh published/lab1_cli

@@ -1,0 +1,30 @@
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++17
+IndentWidth: 4
+ColumnLimit: 120
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+PointerAlignment: Left
+AccessModifierOffset: -4
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+
+# clang-tidy policy for CI (clang-format does not execute these rules).
+# The workflow writes these settings to a temporary lab1/.clang-tidy file.
+# Checks: >-
+#   -*,bugprone-*,clang-analyzer-*,misc-*,modernize-*,performance-*,readability-*,
+#   cppcoreguidelines-init-variables,cppcoreguidelines-special-member-functions,
+#   cppcoreguidelines-pro-type-member-init,
+#   -modernize-use-trailing-return-type,-misc-non-private-member-variables-in-classes,
+#   -readability-function-size,-readability-magic-numbers
+# WarningsAsErrors: '*'
+# HeaderFilterRegex: '(lab1/include|lab1/src|lab1/cli)/.*'
+# CheckOptions: set identifier naming to snake_case for functions/variables/parameters,
+# PascalCase for types, kPascalCase for enum constants and constexpr variables, and
+# a trailing underscore for private data members.
+# cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions: true
+# cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: true
