@@ -262,7 +262,8 @@ TEST(TicTacToeTests, T35_Copy_AssignDifferentSizes) {
 TEST(TicTacToeTests, T36_Copy_SelfAssignment) {
     TicTacToe board;
     (board[{0U, 0U}]) = Mark::kCross;
-    board = board;
+    TicTacToe& same_board = board;
+    board = same_board;
     EXPECT_EQ((board[{0U, 0U}]), Mark::kCross);
 }
 TEST(TicTacToeTests, T37_Copy_ChainedAssignment) {

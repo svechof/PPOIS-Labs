@@ -275,7 +275,8 @@ TEST(PolynomialTests, P38_Copy_AssignDifferentDegrees) {
 }
 TEST(PolynomialTests, P39_Copy_SelfAssignment) {
     Polynomial value(1, {1.0, 2.0});
-    value = value;
+    Polynomial& same_value = value;
+    value = same_value;
     EXPECT_EQ(value, Polynomial(1, {1.0, 2.0}));
 }
 TEST(PolynomialTests, P40_Copy_ChainedAssignment) {

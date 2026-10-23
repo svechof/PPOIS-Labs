@@ -258,7 +258,8 @@ void TicTacToeMenu::demonstrate_copy() {
     tic_tac_toe::TicTacToe assigned;
     assigned = game_;
     output_ << (assigned == game_ ? messages::kAssignmentEqual : messages::kCopyDifferent) << '\n';
-    assigned = assigned;
+    tic_tac_toe::TicTacToe& same_board = assigned;
+    assigned = same_board;
 }
 void TicTacToeMenu::demonstrate_text_format() {
     output_ << "Текущий текст поля:\n" << game_;
@@ -430,7 +431,8 @@ void PolynomialMenu::demonstrate_copy() {
     output_ << (copy == polynomial_a_ ? "A не изменился\n" :
                 "Копия изменена; A не изменился\n");
     polynomial_b_ = copy;
-    polynomial_b_ = polynomial_b_;
+    polynomial::Polynomial& same_polynomial = polynomial_b_;
+    polynomial_b_ = same_polynomial;
     output_ << (polynomial_b_ == copy ? "Присваивание и самоприсваивание выполнены\n" :
                 "Ошибка копирования\n");
 }
