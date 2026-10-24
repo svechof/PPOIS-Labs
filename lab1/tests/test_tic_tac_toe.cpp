@@ -1,10 +1,9 @@
 #include "tic_tac_toe/tic_tac_toe.h"
 
-#include <gtest/gtest.h>
-
 #include <atomic>
 #include <cstddef>
 #include <cstdlib>
+#include <gtest/gtest.h>
 #include <new>
 #include <sstream>
 #include <string>
@@ -15,12 +14,20 @@ std::atomic<bool> fail_next_array_allocation{false};
 }
 
 void* operator new[](std::size_t size) {
-    if (fail_next_array_allocation.exchange(false)) { throw std::bad_alloc(); }
-    if (void* memory = std::malloc(size)) { return memory; }
+    if (fail_next_array_allocation.exchange(false)) {
+        throw std::bad_alloc();
+    }
+    if (void* memory = std::malloc(size)) {
+        return memory;
+    }
     throw std::bad_alloc();
 }
-void operator delete[](void* memory) noexcept { std::free(memory); }
-void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
+void operator delete[](void* memory) noexcept {
+    std::free(memory);
+}
+void operator delete[](void* memory, std::size_t) noexcept {
+    std::free(memory);
+}
 
 namespace tic_tac_toe {
 namespace {
@@ -43,8 +50,9 @@ TEST(TicTacToeTests, T04_Construction_SizeBelowMinThrows) {
     for (std::size_t size = 0U; size < 3U; ++size) {
         EXPECT_THROW(static_cast<void>(TicTacToe(size)), InvalidBoardSizeError);
     }
-    try { static_cast<void>(TicTacToe(2U)); }
-    catch (const InvalidBoardSizeError& error) {
+    try {
+        static_cast<void>(TicTacToe(2U));
+    } catch (const InvalidBoardSizeError& error) {
         EXPECT_STREQ(error.what(), "Invalid board size: 2 (allowed: 3..10)");
     }
 }
@@ -79,8 +87,10 @@ TEST(TicTacToeTests, T09_Access_NonConstIndexOverwritesAndClears) {
 TEST(TicTacToeTests, T10_Access_OutOfRangeRowThrows) {
     TicTacToe board;
     const TicTacToe& view = board;
-    try { static_cast<void>((view[{3U, 0U}])); FAIL(); }
-    catch (const PositionOutOfRangeError& error) {
+    try {
+        static_cast<void>((view[{3U, 0U}]));
+        FAIL();
+    } catch (const PositionOutOfRangeError& error) {
         EXPECT_STREQ(error.what(), "Position out of range: (3, 0) for board size 3");
     }
     EXPECT_THROW(static_cast<void>((board[{3U, 0U}])), PositionOutOfRangeError);
@@ -159,7 +169,9 @@ TEST(TicTacToeTests, T24_Win_RowForEachRow) {
     for (const std::size_t size : {3U, 4U, 10U}) {
         for (std::size_t row = 0U; row < size; ++row) {
             TicTacToe board(size);
-            for (std::size_t col = 0U; col < size; ++col) { (board[{row, col}]) = Mark::kCross; }
+            for (std::size_t col = 0U; col < size; ++col) {
+                (board[{row, col}]) = Mark::kCross;
+            }
             EXPECT_TRUE(board.has_won(Mark::kCross));
             EXPECT_EQ(board.winner(), Mark::kCross);
         }
@@ -169,7 +181,9 @@ TEST(TicTacToeTests, T25_Win_ColumnForEachColumn) {
     for (const std::size_t size : {3U, 4U, 10U}) {
         for (std::size_t col = 0U; col < size; ++col) {
             TicTacToe board(size);
-            for (std::size_t row = 0U; row < size; ++row) { (board[{row, col}]) = Mark::kNought; }
+            for (std::size_t row = 0U; row < size; ++row) {
+                (board[{row, col}]) = Mark::kNought;
+            }
             EXPECT_TRUE(board.has_won(Mark::kNought));
             EXPECT_EQ(board.winner(), Mark::kNought);
         }
@@ -177,7 +191,9 @@ TEST(TicTacToeTests, T25_Win_ColumnForEachColumn) {
 }
 TEST(TicTacToeTests, T26_Win_MainDiagonal) {
     TicTacToe board(4U);
-    for (std::size_t index = 0U; index < board.size(); ++index) { (board[{index, index}]) = Mark::kCross; }
+    for (std::size_t index = 0U; index < board.size(); ++index) {
+        (board[{index, index}]) = Mark::kCross;
+    }
     EXPECT_TRUE(board.has_won(Mark::kCross));
 }
 TEST(TicTacToeTests, T27_Win_AntiDiagonal) {
@@ -221,13 +237,17 @@ TEST(TicTacToeTests, T32_Draw_FullBoardCases) {
                                {Mark::kCross, Mark::kNought, Mark::kNought},
                                {Mark::kNought, Mark::kCross, Mark::kCross}};
     for (std::size_t row = 0U; row < 3U; ++row) {
-        for (std::size_t col = 0U; col < 3U; ++col) { (draw[{row, col}]) = layout[row][col]; }
+        for (std::size_t col = 0U; col < 3U; ++col) {
+            (draw[{row, col}]) = layout[row][col];
+        }
     }
     EXPECT_TRUE(draw.is_full());
     EXPECT_TRUE(draw.is_draw());
     TicTacToe full;
     for (std::size_t row = 0U; row < 3U; ++row) {
-        for (std::size_t col = 0U; col < 3U; ++col) { (full[{row, col}]) = Mark::kCross; }
+        for (std::size_t col = 0U; col < 3U; ++col) {
+            (full[{row, col}]) = Mark::kCross;
+        }
     }
     EXPECT_TRUE(full.is_full());
     EXPECT_FALSE(full.is_draw());
@@ -348,7 +368,11 @@ TEST(TicTacToeTests, T47_Io_RoundTrip) {
     }
 }
 TEST(TicTacToeTests, T48_Io_ReadInvalidTable) {
-    struct Case { std::string text; std::string expected; bool size_error; };
+    struct Case {
+        std::string text;
+        std::string expected;
+        bool size_error;
+    };
     const Case cases[] = {
         {"", "Invalid board format: size is missing", false},
         {"abc", "Invalid board format: size is not an integer: 'abc'", false},
@@ -360,8 +384,7 @@ TEST(TicTacToeTests, T48_Io_ReadInvalidTable) {
         {"3 X.O .X.", "Invalid board format: row 3 is missing", false},
         {"3 X.O .X O.X", "Invalid board format: row 2 has length 2, expected 3", false},
         {"3 X.O .Z. O.X", "Invalid mark: 'Z'", false},
-        {"3 x.o ... ...", "Invalid mark: 'x'", false}
-    };
+        {"3 x.o ... ...", "Invalid mark: 'x'", false}};
     for (const Case& item : cases) {
         TicTacToe board;
         std::istringstream input(item.text);
@@ -417,5 +440,5 @@ TEST(TicTacToeTests, T54_Structure_HeadersSelfContained) {
     SUCCEED();
 }
 
-}  // namespace
-}  // namespace tic_tac_toe
+} // namespace
+} // namespace tic_tac_toe

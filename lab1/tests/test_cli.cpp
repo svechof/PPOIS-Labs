@@ -1,7 +1,6 @@
 #include "cli.h"
 
 #include <gtest/gtest.h>
-
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -67,9 +66,8 @@ TEST(CliTests, C07_TicTacToeMenu_QuitGame) {
     EXPECT_NE(output.str().find("Партия прервана"), std::string::npos);
 }
 TEST(CliTests, C08_TicTacToeMenu_AllItemsSmoke) {
-    const std::string script =
-        "1\n2\n4\n3\n4\n1\n1\nO\n5\n1\n1\n6\n1\n1\nX\n"
-        "7\n1\n1\nX\n8\n9\n10\n3\n....\n....\n....\n....\n0\n0\n";
+    const std::string script = "1\n2\n4\n3\n4\n1\n1\nO\n5\n1\n1\n6\n1\n1\nX\n"
+                               "7\n1\n1\nX\n8\n9\n10\n3\n....\n....\n....\n....\n0\n0\n";
     std::istringstream input(script);
     std::ostringstream output;
     Application application(input, output);
@@ -81,17 +79,16 @@ TEST(CliTests, C08_TicTacToeMenu_AllItemsSmoke) {
     EXPECT_NE(rendered.find("Текущий текст поля"), std::string::npos);
 }
 TEST(CliTests, C09_PolynomialMenu_FullScenario) {
-    const std::string script =
-        "2\n"
-        "1\nA\n2\n-1 0 1\n"
-        "2\nB\n1 -1 1\n"
-        "3\n"
-        "6\nA\n2\n"
-        "7\n8\n9\n10\n12\n"
-        "4\nA\n5\n"
-        "5\nA\n2\n0\n"
-        "1\nB\n0\n0\n"
-        "10\n0\n0\n";
+    const std::string script = "2\n"
+                               "1\nA\n2\n-1 0 1\n"
+                               "2\nB\n1 -1 1\n"
+                               "3\n"
+                               "6\nA\n2\n"
+                               "7\n8\n9\n10\n12\n"
+                               "4\nA\n5\n"
+                               "5\nA\n2\n0\n"
+                               "1\nB\n0\n0\n"
+                               "10\n0\n0\n";
     std::istringstream input(script);
     std::ostringstream output;
     Application application(input, output);
@@ -119,7 +116,8 @@ TEST(CliTests, C11_PolynomialMenu_BadInputShowsError) {
     std::ostringstream output;
     Application application(input, output);
     application.run();
-    EXPECT_NE(output.str().find("Ошибка: Неверный формат многочлена. Проверьте степень и коэффициенты."), std::string::npos);
+    EXPECT_NE(output.str().find("Ошибка: Неверный формат многочлена. Проверьте степень и коэффициенты."),
+              std::string::npos);
     EXPECT_NE(output.str().find("A: 1 1 2, 2x + 1"), std::string::npos);
 }
 TEST(CliTests, C12_BoardView_ExactRendering) {
@@ -144,10 +142,11 @@ TEST(CliTests, C13_PolynomialView_AlgebraicRendering) {
         {polynomial::Polynomial(2, {0.0, -1.0, 1.0}), "x^2 - x"},
         {polynomial::Polynomial(1, {1.0, 1.0}), "x + 1"},
         {polynomial::Polynomial(), "0"},
-        {polynomial::Polynomial(0, {2.5}), "2.5"}
-    };
+        {polynomial::Polynomial(0, {2.5}), "2.5"}};
     PolynomialView view;
-    for (const auto& item : cases) { EXPECT_EQ(view.algebraic(item.first), item.second); }
+    for (const auto& item : cases) {
+        EXPECT_EQ(view.algebraic(item.first), item.second);
+    }
 }
 TEST(CliTests, C14_Console_ReadIntegerInRange) {
     std::istringstream input("abc\n99\n2\n");
@@ -161,5 +160,5 @@ TEST(CliTests, C14_Console_ReadIntegerInRange) {
     EXPECT_EQ(boundary_console.read_integer_in_range("choice: ", 0, 2), 0);
 }
 
-}  // namespace
-}  // namespace cli
+} // namespace
+} // namespace cli
