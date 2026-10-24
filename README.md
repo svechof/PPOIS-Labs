@@ -1,65 +1,56 @@
-# Лабораторная работа №1 — проектирование ПО интеллектуальных систем
+# Лабораторная работа №1 — основы ООП
 
-## Шпаргалка для быстрой проверки
+Консольное приложение на C++17 с двумя независимыми классами:
 
-Все команды выполняются из корня репозитория.
+- `tic_tac_toe::TicTacToe` — игровое поле «Крестики-нолики» размером от 3×3 до 10×10;
+- `polynomial::Polynomial` — многочлен от одной переменной с арифметическими операциями.
 
-| Действие | Команда |
-|---|---|
-| Сборка | `cmake -S lab1 -B lab1/build && cmake --build lab1/build` |
-| Тесты | `ctest --test-dir lab1/build --output-on-failure` |
-| Запуск CLI | `./lab1/build/bin/lab1_cli` |
-| Генерация документации | `doxygen lab1/Doxyfile` |
-| Открыть документацию | `lab1/docs/html/index.html` |
+Доменная логика отделена от консольного интерфейса (`lab1_cli`).
 
-**Инструкция для проверяющего.** Скачайте `lab1-cli-linux-x86_64.tar.gz` из раздела Releases на GitHub, распакуйте командой `tar -xzf lab1-cli-linux-x86_64.tar.gz` и запустите `./lab1_cli`. Бинарный файл собирается со статической линковкой; автономность проверяется smoke-тестом в чистом контейнере Ubuntu 22.04.
+## Требования
 
-## Репозиторий
+- CMake 3.20 или новее;
+- компилятор с поддержкой C++17 (g++ 11+ или clang++ 14+);
+- Git и доступ к интернету для первоначальной загрузки GoogleTest.
 
-| Каталог | Содержание |
-|---|---|
-| `lab1/` | Активная лабораторная работа: C++17, крестики-нолики, многочлены и CLI |
-| `lab2/` | Лабораторная работа не начата |
-| `lab3/` | Лабораторная работа не начата |
-| `lab4/` | Лабораторная работа не начата |
+## Сборка и запуск
 
-## Лабораторная работа №1
-
-Реализованы два независимых домена: `tic_tac_toe::TicTacToe` (вариант 1.5.1) и `polynomial::Polynomial` (вариант 1.6.2). CLI не переносит бизнес-логику в меню: правила игры и арифметика реализованы в доменных классах.
-
-### Требования
-
-- CMake ≥ 3.20;
-- g++ ≥ 11 или clang++ ≥ 14 с поддержкой C++17;
-- Git и доступ к интернету при первой загрузке GoogleTest через `FetchContent`;
-- для статического анализа: `clang-format`, `clang-tidy`, `run-clang-tidy`;
-- для документации и покрытия: Doxygen, Graphviz и gcovr.
-
-### Сборка, тесты, санитайзеры
+Команды выполнять из корня репозитория.
 
 ```bash
-cmake -S lab1 -B lab1/build -DCMAKE_BUILD_TYPE=Debug
+cmake -S lab1 -B lab1/build
 cmake --build lab1/build --parallel
-ctest --test-dir lab1/build --output-on-failure
-
-cmake -S lab1 -B lab1/build-asan -DCMAKE_BUILD_TYPE=Debug -DLAB1_SANITIZE=ON
-cmake --build lab1/build-asan --parallel
-ctest --test-dir lab1/build-asan --output-on-failure
+./lab1/build/bin/lab1_cli
 ```
 
-### CMake-опции
+## Тесты
 
-| Опция | Значение по умолчанию | Назначение |
-|---|---|---|
-| `LAB1_BUILD_TESTS` | `ON` | собирать модульные тесты |
-| `LAB1_SANITIZE` | `OFF` | включить ASan и UBSan |
-| `LAB1_COVERAGE` | `OFF` | включить измерение покрытия |
-| `LAB1_STATIC` | `OFF` | статически слинковать CLI на Linux |
+```bash
+ctest --test-dir lab1/build --output-on-failure
+```
 
-### Тесты
+Тесты находятся в `lab1/tests/`: `test_tic_tac_toe.cpp`, `test_polynomial.cpp` и `test_cli.cpp`.
 
-- `lab1/tests/test_tic_tac_toe.cpp`: T01–T54;
-- `lab1/tests/test_polynomial.cpp`: P01–P50;
-- `lab1/tests/test_cli.cpp`: C01–C14.
+## Документация API
 
-Полная инструкция и разбор GitHub Actions для защиты находятся в `lab1/GETTING_STARTED.md`. Спецификация исходных требований находится в `specification.md`.
+Сгенерировать документацию Doxygen и открыть её на macOS:
+
+```bash
+doxygen lab1/Doxyfile
+open lab1/docs/html/index.html
+```
+
+На Linux вместо `open` можно использовать `xdg-open lab1/docs/html/index.html`.
+
+## Релизы и артефакты
+
+Workflow в `.github/workflows/lab1.yml` собирает архив `lab1-cli-linux-x86_64.tar.gz` при отправке тега версии с префиксом `v`. Архив сохраняется в артефактах запуска GitHub Actions и прикрепляется к GitHub Release.
+
+После проверки изменений и успешных CI-проверок релиз можно запустить тегом, например:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Артефакт GitHub Actions хранится ограниченное время; прикреплённый к опубликованному релизу архив остаётся доступен в разделе **Releases**.

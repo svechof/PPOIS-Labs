@@ -7,14 +7,12 @@ on:
     paths:
       - "lab1/**"
       - "README.md"
-      - "specification.md"
       - ".github/workflows/lab1.yml"
   pull_request:
     branches: [main]
     paths:
       - "lab1/**"
       - "README.md"
-      - "specification.md"
       - ".github/workflows/lab1.yml"
   workflow_dispatch:
 

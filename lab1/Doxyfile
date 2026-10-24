@@ -2,6 +2,7 @@
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "Lab 1 — C++17"
 PROJECT_BRIEF          = "Крестики-нолики и многочлены"
+OUTPUT_LANGUAGE = Russian
 OUTPUT_DIRECTORY       = lab1/docs
 INPUT                  = lab1/include lab1/cli README.md
 FILE_PATTERNS          = *.h *.cpp *.md
@@ -34,3 +35,15 @@ INLINE_SOURCES          = NO
 GENERATE_TREEVIEW       = YES
 HAVE_DOT                = YES
 DOT_IMAGE_FORMAT        = svg
+# Диаграммы классов и связей
+CLASS_GRAPH             = YES
+COLLABORATION_GRAPH     = YES
+GRAPHICAL_HIERARCHY     = YES
+
+# Диаграммы зависимостей файлов
+INCLUDE_GRAPH           = YES
+INCLUDED_BY_GRAPH       = YES
+DIRECTORY_GRAPH         = YES
+
+# Не прятать содержимое диаграмм за динамическими секциями
+HTML_DYNAMIC_SECTIONS   = NO
