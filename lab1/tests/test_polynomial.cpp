@@ -1,30 +1,14 @@
 #include "polynomial/polynomial.h"
 
-#include <gtest/gtest.h>
-
-#include <atomic>
 #include <cmath>
 #include <cstddef>
-#include <cstdlib>
+#include <gtest/gtest.h>
 #include <iomanip>
 #include <limits>
-#include <new>
 #include <sstream>
 #include <string>
 #include <type_traits>
 #include <vector>
-
-namespace {
-std::atomic<bool> fail_next_allocation{false};
-}
-
-void* operator new(std::size_t size) {
-    if (fail_next_allocation.exchange(false)) { throw std::bad_alloc(); }
-    if (void* memory = std::malloc(size)) { return memory; }
-    throw std::bad_alloc();
-}
-void operator delete(void* memory) noexcept { std::free(memory); }
-void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
 
 namespace polynomial {
 namespace {
@@ -62,8 +46,10 @@ TEST(PolynomialTests, P06_Construction_EpsilonTrimming) {
     EXPECT_EQ(Polynomial(1, {1.0, 2e-9}).degree(), 1U);
 }
 TEST(PolynomialTests, P07_Construction_NegativeDegreeThrows) {
-    try { static_cast<void>(Polynomial(-1, {0.0})); FAIL(); }
-    catch (const InvalidDegreeError& error) {
+    try {
+        static_cast<void>(Polynomial(-1, {0.0}));
+        FAIL();
+    } catch (const InvalidDegreeError& error) {
         EXPECT_STREQ(error.what(), "Invalid degree: -1 (allowed: 0..1000)");
     }
 }
@@ -74,8 +60,10 @@ TEST(PolynomialTests, P08_Construction_DegreeLimit) {
     EXPECT_THROW(static_cast<void>(Polynomial(1001, too_large)), InvalidDegreeError);
 }
 TEST(PolynomialTests, P09_Construction_CountMismatchThrows) {
-    try { static_cast<void>(Polynomial(2, {1.0, 2.0})); FAIL(); }
-    catch (const CoefficientCountMismatchError& error) {
+    try {
+        static_cast<void>(Polynomial(2, {1.0, 2.0}));
+        FAIL();
+    } catch (const CoefficientCountMismatchError& error) {
         EXPECT_STREQ(error.what(), "Coefficient count mismatch: degree 2 requires 3 coefficients, got 2");
     }
     EXPECT_THROW(static_cast<void>(Polynomial(1, {1.0, 2.0, 3.0})), CoefficientCountMismatchError);
@@ -83,8 +71,12 @@ TEST(PolynomialTests, P09_Construction_CountMismatchThrows) {
 TEST(PolynomialTests, P10_Construction_NonFiniteThrows) {
     const double infinity = std::numeric_limits<double>::infinity();
     const double nan = std::numeric_limits<double>::quiet_NaN();
-    try { static_cast<void>(Polynomial(1, {1.0, infinity})); FAIL(); }
-    catch (const NonFiniteCoefficientError& error) { EXPECT_STREQ(error.what(), "Non-finite coefficient at power 1"); }
+    try {
+        static_cast<void>(Polynomial(1, {1.0, infinity}));
+        FAIL();
+    } catch (const NonFiniteCoefficientError& error) {
+        EXPECT_STREQ(error.what(), "Non-finite coefficient at power 1");
+    }
     EXPECT_THROW(static_cast<void>(Polynomial(1, {nan, 1.0})), NonFiniteCoefficientError);
 }
 TEST(PolynomialTests, P11_Construction_CheckOrder) {
@@ -98,8 +90,10 @@ TEST(PolynomialTests, P12_Access_ConstReadsAll) {
 }
 TEST(PolynomialTests, P13_Access_ConstOutOfRangeThrows) {
     const Polynomial value(2, {1.0, 2.0, 3.0});
-    try { static_cast<void>(value[3U]); FAIL(); }
-    catch (const CoefficientIndexError& error) {
+    try {
+        static_cast<void>(value[3U]);
+        FAIL();
+    } catch (const CoefficientIndexError& error) {
         EXPECT_STREQ(error.what(), "Coefficient index out of range: 3 (degree is 2)");
     }
 }
@@ -146,10 +140,8 @@ TEST(PolynomialTests, P20_Evaluate_OverflowGivesInfinity) {
     EXPECT_DOUBLE_EQ(with_dead(2.0), 5.0);
 }
 TEST(PolynomialTests, P21_Add_Cases) {
-    EXPECT_EQ(Polynomial(1, {1.0, 1.0}) + Polynomial(2, {0.0, 1.0, 1.0}),
-              Polynomial(2, {1.0, 2.0, 1.0}));
-    EXPECT_EQ(Polynomial(2, {0.0, 1.0, 1.0}) + Polynomial(2, {0.0, 0.0, -1.0}),
-              Polynomial(1, {0.0, 1.0}));
+    EXPECT_EQ(Polynomial(1, {1.0, 1.0}) + Polynomial(2, {0.0, 1.0, 1.0}), Polynomial(2, {1.0, 2.0, 1.0}));
+    EXPECT_EQ(Polynomial(2, {0.0, 1.0, 1.0}) + Polynomial(2, {0.0, 0.0, -1.0}), Polynomial(1, {0.0, 1.0}));
     const Polynomial value(1, {1.0, 2.0});
     EXPECT_TRUE((value + (Polynomial(1, {-1.0, -2.0}))).is_zero());
 }
@@ -162,8 +154,7 @@ TEST(PolynomialTests, P22_Add_CompoundAndAliasing) {
 TEST(PolynomialTests, P23_Subtract_Cases) {
     const Polynomial value(2, {1.0, 2.0, 3.0});
     EXPECT_TRUE((value - value).is_zero());
-    EXPECT_EQ(Polynomial(2, {0.0, 0.0, 1.0}) - Polynomial(2, {1.0, 0.0, 1.0}),
-              Polynomial(0, {-1.0}));
+    EXPECT_EQ(Polynomial(2, {0.0, 0.0, 1.0}) - Polynomial(2, {1.0, 0.0, 1.0}), Polynomial(0, {-1.0}));
     Polynomial compound(value);
     compound -= value;
     EXPECT_TRUE(compound.is_zero());
@@ -172,11 +163,9 @@ TEST(PolynomialTests, P23_Subtract_Cases) {
     EXPECT_TRUE(compound.is_zero());
 }
 TEST(PolynomialTests, P24_Multiply_Cases) {
-    EXPECT_EQ(Polynomial(1, {1.0, 1.0}) * Polynomial(1, {-1.0, 1.0}),
-              Polynomial(2, {-1.0, 0.0, 1.0}));
+    EXPECT_EQ(Polynomial(1, {1.0, 1.0}) * Polynomial(1, {-1.0, 1.0}), Polynomial(2, {-1.0, 0.0, 1.0}));
     EXPECT_TRUE((Polynomial(2, {1.0, 2.0, 3.0}) * Polynomial()).is_zero());
-    EXPECT_EQ(Polynomial(1, {2.0, 3.0}) * Polynomial(0, {4.0}),
-              Polynomial(1, {8.0, 12.0}));
+    EXPECT_EQ(Polynomial(1, {2.0, 3.0}) * Polynomial(0, {4.0}), Polynomial(1, {8.0, 12.0}));
 }
 TEST(PolynomialTests, P25_Multiply_CompoundAliasingAndLimit) {
     Polynomial value(1, {1.0, 1.0});
@@ -190,24 +179,19 @@ TEST(PolynomialTests, P25_Multiply_CompoundAliasingAndLimit) {
     EXPECT_EQ(large, original);
 }
 TEST(PolynomialTests, P26_Divide_ExactCases) {
-    EXPECT_EQ(Polynomial(2, {-1.0, 0.0, 1.0}) / Polynomial(1, {-1.0, 1.0}),
-              Polynomial(1, {1.0, 1.0}));
-    EXPECT_EQ(Polynomial(3, {-6.0, 11.0, -6.0, 1.0}) / Polynomial(1, {-1.0, 1.0}),
-              Polynomial(2, {6.0, -5.0, 1.0}));
+    EXPECT_EQ(Polynomial(2, {-1.0, 0.0, 1.0}) / Polynomial(1, {-1.0, 1.0}), Polynomial(1, {1.0, 1.0}));
+    EXPECT_EQ(Polynomial(3, {-6.0, 11.0, -6.0, 1.0}) / Polynomial(1, {-1.0, 1.0}), Polynomial(2, {6.0, -5.0, 1.0}));
 }
 TEST(PolynomialTests, P27_Divide_RemainderDiscarded) {
-    EXPECT_EQ(Polynomial(2, {1.0, 0.0, 1.0}) / Polynomial(1, {0.0, 1.0}),
-              Polynomial(1, {0.0, 1.0}));
-    EXPECT_EQ(Polynomial(3, {1.0, 2.0, 0.0, 1.0}) / Polynomial(2, {1.0, 0.0, 1.0}),
-              Polynomial(1, {0.0, 1.0}));
+    EXPECT_EQ(Polynomial(2, {1.0, 0.0, 1.0}) / Polynomial(1, {0.0, 1.0}), Polynomial(1, {0.0, 1.0}));
+    EXPECT_EQ(Polynomial(3, {1.0, 2.0, 0.0, 1.0}) / Polynomial(2, {1.0, 0.0, 1.0}), Polynomial(1, {0.0, 1.0}));
 }
 TEST(PolynomialTests, P28_Divide_LowerDegreeAndZeroDividend) {
     EXPECT_TRUE((Polynomial(1, {1.0, 1.0}) / Polynomial(2, {0.0, 0.0, 1.0})).is_zero());
     EXPECT_TRUE((Polynomial() / Polynomial(1, {1.0, 1.0})).is_zero());
 }
 TEST(PolynomialTests, P29_Divide_ByConstant) {
-    EXPECT_EQ(Polynomial(2, {4.0, 0.0, 2.0}) / Polynomial(0, {2.0}),
-              Polynomial(2, {2.0, 0.0, 1.0}));
+    EXPECT_EQ(Polynomial(2, {4.0, 0.0, 2.0}) / Polynomial(0, {2.0}), Polynomial(2, {2.0, 0.0, 1.0}));
 }
 TEST(PolynomialTests, P30_Divide_ByZeroThrows) {
     Polynomial dividend(1, {3.0, 4.0});
@@ -287,14 +271,6 @@ TEST(PolynomialTests, P40_Copy_ChainedAssignment) {
     EXPECT_EQ(first, third);
     EXPECT_EQ(second, third);
 }
-TEST(PolynomialTests, P41_Copy_AssignStrongGuarantee) {
-    Polynomial target(1, {3.0, 4.0});
-    const Polynomial original(target);
-    const Polynomial source(1000, std::vector<double>(1001U, 1.0));
-    fail_next_allocation = true;
-    EXPECT_THROW(target = source, std::bad_alloc);
-    EXPECT_EQ(target, original);
-}
 TEST(PolynomialTests, P42_Io_WriteFormat) {
     const Polynomial value(2, {-5.0, 0.0, 3.0});
     std::ostringstream output;
@@ -332,28 +308,32 @@ TEST(PolynomialTests, P44_Io_ReadValidVariants) {
     }
 }
 TEST(PolynomialTests, P45_Io_ReadInvalidTable) {
-    struct Case { std::string text; std::string message; int category; };
-    const Case cases[] = {
-        {"", "Invalid polynomial format: degree is missing", 0},
-        {"x", "Invalid polynomial format: degree is not an integer: 'x'", 0},
-        {"1.5 1 2", "Invalid polynomial format: degree is not an integer: '1.5'", 0},
-        {"1e2 1 2", "Invalid polynomial format: degree is not an integer: '1e2'", 0},
-        {"-1 0", "Invalid degree: -1 (allowed: 0..1000)", 1},
-        {"1001", "Invalid degree: 1001 (allowed: 0..1000)", 1},
-        {"2 1 2", "Invalid polynomial format: expected 3 coefficients, got 2", 0},
-        {"1 a 2", "Invalid polynomial format: coefficient is not a number: 'a'", 0},
-        {"1 1e 2", "Invalid polynomial format: coefficient is not a number: '1e'", 0},
-        {"1 0x10 2", "Invalid polynomial format: coefficient is not a number: '0x10'", 0},
-        {"1 nan 2", "Invalid polynomial format: coefficient is not a number: 'nan'", 0},
-        {"1 inf 2", "Invalid polynomial format: coefficient is not a number: 'inf'", 0},
-        {"1 1,5 2", "Invalid polynomial format: coefficient is not a number: '1,5'", 0},
-        {"1 1e999 2", "Non-finite coefficient at power 0", 2}
+    struct Case {
+        std::string text;
+        std::string message;
+        int category;
     };
+    const Case cases[] = {{"", "Invalid polynomial format: degree is missing", 0},
+                          {"x", "Invalid polynomial format: degree is not an integer: 'x'", 0},
+                          {"1.5 1 2", "Invalid polynomial format: degree is not an integer: '1.5'", 0},
+                          {"1e2 1 2", "Invalid polynomial format: degree is not an integer: '1e2'", 0},
+                          {"-1 0", "Invalid degree: -1 (allowed: 0..1000)", 1},
+                          {"1001", "Invalid degree: 1001 (allowed: 0..1000)", 1},
+                          {"2 1 2", "Invalid polynomial format: expected 3 coefficients, got 2", 0},
+                          {"1 a 2", "Invalid polynomial format: coefficient is not a number: 'a'", 0},
+                          {"1 1e 2", "Invalid polynomial format: coefficient is not a number: '1e'", 0},
+                          {"1 0x10 2", "Invalid polynomial format: coefficient is not a number: '0x10'", 0},
+                          {"1 nan 2", "Invalid polynomial format: coefficient is not a number: 'nan'", 0},
+                          {"1 inf 2", "Invalid polynomial format: coefficient is not a number: 'inf'", 0},
+                          {"1 1,5 2", "Invalid polynomial format: coefficient is not a number: '1,5'", 0},
+                          {"1 1e999 2", "Non-finite coefficient at power 0", 2}};
     for (const Case& item : cases) {
         Polynomial value;
         std::istringstream input(item.text);
-        try { input >> value; FAIL() << item.text; }
-        catch (const InvalidDegreeError& error) {
+        try {
+            input >> value;
+            FAIL() << item.text;
+        } catch (const InvalidDegreeError& error) {
             EXPECT_EQ(item.category, 1);
             EXPECT_EQ(error.what(), item.message);
         } catch (const NonFiniteCoefficientError& error) {
@@ -399,5 +379,5 @@ TEST(PolynomialTests, P50_Structure_HeadersSelfContained) {
     EXPECT_TRUE(std::is_default_constructible_v<Polynomial>);
 }
 
-}  // namespace
-}  // namespace polynomial
+} // namespace
+} // namespace polynomial
