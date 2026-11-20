@@ -268,13 +268,13 @@ private:
 std::ostream& operator<<(std::ostream& out, const Polynomial& value);
 
 /// @brief Читает степень и коэффициенты, обновляя цель только при полном успехе.
-/// @param in Входной поток.
+/// @param input Входной поток.
 /// @param value Целевой объект.
 /// @return Ссылка на поток.
 /// @throws InvalidPolynomialFormatError Для неверного текстового формата.
 /// @throws InvalidDegreeError Для степени вне допустимого диапазона.
 /// @throws NonFiniteCoefficientError Для неконечного коэффициента.
-std::istream& operator>>(std::istream& in, Polynomial& value);
+std::istream& operator>>(std::istream& input, Polynomial& value);
 
 } // namespace polynomial
 /// @}
