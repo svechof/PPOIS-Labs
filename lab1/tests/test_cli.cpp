@@ -116,10 +116,9 @@ TEST(CliTests, C11_PolynomialMenu_BadInputShowsError) {
     std::ostringstream output;
     Application application(input, output);
     application.run();
-    EXPECT_NE(
-    output.str().find(
-        "Ошибка: Неверный формат многочлена. Проверьте степень и коэффициенты."),
-    std::string::npos);
+    EXPECT_NE(output.str().find("Ошибка: Неверный формат многочлена. "
+                            "Проверьте степень и коэффициенты."),
+          std::string::npos);
     EXPECT_NE(output.str().find("A: 1 1 2, 2x + 1"), std::string::npos);
 }
 TEST(CliTests, C12_BoardView_ExactRendering) {

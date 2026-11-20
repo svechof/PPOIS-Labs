@@ -35,9 +35,9 @@ inline constexpr std::size_t kDefaultBoardSize = 3;
 /// @brief Содержимое одной клетки игрового поля.
 /// @details Значения перечисления совпадают с символами текстового формата.
 enum class Mark : char {
-    kEmpty = '.',  ///< Клетка свободна.
-    kCross = 'X',  ///< В клетке стоит крестик.
-    kNought = 'O'  ///< В клетке стоит нолик.
+    kEmpty = '.', ///< Клетка свободна.
+    kCross = 'X', ///< В клетке стоит крестик.
+    kNought = 'O' ///< В клетке стоит нолик.
 };
 
 /// @brief Преобразует метку в символ текстового формата.
@@ -54,8 +54,8 @@ Mark mark_from_char(char symbol);
 /// @brief Позиция клетки на игровом поле.
 /// @details Индексы API отсчитываются с нуля, строка 0 расположена сверху.
 struct Position {
-    std::size_t row;  ///< Номер строки, начиная с 0.
-    std::size_t col;  ///< Номер столбца, начиная с 0.
+    std::size_t row; ///< Номер строки, начиная с 0.
+    std::size_t col; ///< Номер столбца, начиная с 0.
 };
 
 /// @brief Базовый класс исключений домена «Крестики-нолики».
@@ -120,8 +120,8 @@ public:
     /// @param row_number Номер строки, начиная с 1.
     /// @param actual_length Фактическая длина строки.
     /// @param expected_length Ожидаемая длина строки — размер поля.
-    [[nodiscard]] static InvalidBoardFormatError row_has_wrong_length(
-        std::size_t row_number, std::size_t actual_length, std::size_t expected_length);
+    [[nodiscard]] static InvalidBoardFormatError row_has_wrong_length(std::size_t row_number, std::size_t actual_length,
+                                                                      std::size_t expected_length);
 };
 
 /// @brief Квадратное поле «Крестики-нолики» размером от 3×3 до 10×10.
@@ -284,5 +284,5 @@ std::ostream& operator<<(std::ostream& out, const TicTacToe& board);
 /// @throws InvalidMarkError Если встретился недопустимый символ клетки.
 std::istream& operator>>(std::istream& in, TicTacToe& board);
 
-}  // namespace tic_tac_toe
+} // namespace tic_tac_toe
 /// @}

@@ -102,8 +102,8 @@ public:
     /// @brief Сообщает о недостаточном количестве коэффициентов.
     /// @param expected Ожидаемое количество коэффициентов.
     /// @param actual Фактическое количество коэффициентов.
-    [[nodiscard]] static InvalidPolynomialFormatError coefficient_count_mismatch(
-        std::size_t expected, std::size_t actual);
+    [[nodiscard]] static InvalidPolynomialFormatError coefficient_count_mismatch(std::size_t expected,
+                                                                                 std::size_t actual);
     /// @brief Сообщает, что лексема не является допустимым коэффициентом.
     /// @param token Некорректная лексема.
     [[nodiscard]] static InvalidPolynomialFormatError coefficient_not_number(const std::string& token);
@@ -276,5 +276,5 @@ std::ostream& operator<<(std::ostream& out, const Polynomial& value);
 /// @throws NonFiniteCoefficientError Для неконечного коэффициента.
 std::istream& operator>>(std::istream& in, Polynomial& value);
 
-}  // namespace polynomial
+} // namespace polynomial
 /// @}

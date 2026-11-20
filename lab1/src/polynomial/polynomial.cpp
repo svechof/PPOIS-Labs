@@ -9,47 +9,52 @@
 namespace polynomial {
 namespace {
 std::string degree_message(int degree) {
-    return "Invalid degree: " + std::to_string(degree) + " (allowed: 0.." +
-           std::to_string(kMaxDegree) + ")";
+    return "Invalid degree: " + std::to_string(degree) + " (allowed: 0.." + std::to_string(kMaxDegree) + ")";
 }
 std::string count_message(int degree, std::size_t count) {
-    return "Coefficient count mismatch: degree " + std::to_string(degree) +
-           " requires " + std::to_string(static_cast<std::size_t>(degree) + 1U) +
-           " coefficients, got " + std::to_string(count);
+    return "Coefficient count mismatch: degree " + std::to_string(degree) + " requires " +
+           std::to_string(static_cast<std::size_t>(degree) + 1U) + " coefficients, got " + std::to_string(count);
 }
-void divide_step(std::vector<double>& quotient, std::vector<double>& remainder,
-                 const Polynomial& divisor, std::size_t shift, double divisor_lead);
-}  // namespace
+void divide_step(std::vector<double>& quotient, std::vector<double>& remainder, const Polynomial& divisor,
+                 std::size_t shift, double divisor_lead);
+} // namespace
 
-PolynomialError::PolynomialError(const std::string& message) : std::runtime_error(message) {}
-InvalidDegreeError::InvalidDegreeError(int degree) : PolynomialError(degree_message(degree)) {}
+PolynomialError::PolynomialError(const std::string& message) : std::runtime_error(message) {
+}
+InvalidDegreeError::InvalidDegreeError(int degree) : PolynomialError(degree_message(degree)) {
+}
 CoefficientCountMismatchError::CoefficientCountMismatchError(int degree, std::size_t count)
-    : PolynomialError(count_message(degree, count)) {}
+    : PolynomialError(count_message(degree, count)) {
+}
 NonFiniteCoefficientError::NonFiniteCoefficientError(std::size_t power)
-    : PolynomialError("Non-finite coefficient at power " + std::to_string(power)) {}
+    : PolynomialError("Non-finite coefficient at power " + std::to_string(power)) {
+}
 CoefficientIndexError::CoefficientIndexError(std::size_t power, std::size_t degree)
-    : PolynomialError("Coefficient index out of range: " + std::to_string(power) +
-                       " (degree is " + std::to_string(degree) + ")") {}
-DivisionByZeroPolynomialError::DivisionByZeroPolynomialError()
-    : PolynomialError("Division by zero polynomial") {}
+    : PolynomialError("Coefficient index out of range: " + std::to_string(power) + " (degree is " +
+                      std::to_string(degree) + ")") {
+}
+DivisionByZeroPolynomialError::DivisionByZeroPolynomialError() : PolynomialError("Division by zero polynomial") {
+}
 InvalidPolynomialFormatError::InvalidPolynomialFormatError(const std::string& details)
-    : PolynomialError("Invalid polynomial format: " + details) {}
+    : PolynomialError("Invalid polynomial format: " + details) {
+}
 InvalidPolynomialFormatError InvalidPolynomialFormatError::degree_missing() {
     return InvalidPolynomialFormatError("degree is missing");
 }
 InvalidPolynomialFormatError InvalidPolynomialFormatError::degree_not_integer(const std::string& token) {
     return InvalidPolynomialFormatError("degree is not an integer: '" + token + "'");
 }
-InvalidPolynomialFormatError InvalidPolynomialFormatError::coefficient_count_mismatch(
-    std::size_t expected, std::size_t actual) {
-    return InvalidPolynomialFormatError("expected " + std::to_string(expected) +
-                                        " coefficients, got " + std::to_string(actual));
+InvalidPolynomialFormatError InvalidPolynomialFormatError::coefficient_count_mismatch(std::size_t expected,
+                                                                                      std::size_t actual) {
+    return InvalidPolynomialFormatError("expected " + std::to_string(expected) + " coefficients, got " +
+                                        std::to_string(actual));
 }
 InvalidPolynomialFormatError InvalidPolynomialFormatError::coefficient_not_number(const std::string& token) {
     return InvalidPolynomialFormatError("coefficient is not a number: '" + token + "'");
 }
 
-Polynomial::Polynomial() : coefficients_{0.0} {}
+Polynomial::Polynomial() : coefficients_{0.0} {
+}
 Polynomial::Polynomial(int degree, const std::vector<double>& coefficients) : coefficients_{} {
     if (degree < 0 || static_cast<std::size_t>(degree) > kMaxDegree) {
         throw InvalidDegreeError(degree);
@@ -61,9 +66,9 @@ Polynomial::Polynomial(int degree, const std::vector<double>& coefficients) : co
     coefficients_ = coefficients;
     normalize(coefficients_);
 }
-Polynomial::Polynomial(const Polynomial& other) : coefficients_(other.coefficients_.begin(),
-                                                               other.coefficients_.begin() +
-                                                                   static_cast<std::ptrdiff_t>(other.effective_size())) {
+Polynomial::Polynomial(const Polynomial& other)
+    : coefficients_(other.coefficients_.begin(),
+                    other.coefficients_.begin() + static_cast<std::ptrdiff_t>(other.effective_size())) {
     normalize(coefficients_);
 }
 Polynomial& Polynomial::operator=(const Polynomial& other) {
@@ -73,7 +78,9 @@ Polynomial& Polynomial::operator=(const Polynomial& other) {
     }
     return *this;
 }
-std::size_t Polynomial::degree() const noexcept { return effective_size() - 1U; }
+std::size_t Polynomial::degree() const noexcept {
+    return effective_size() - 1U;
+}
 bool Polynomial::is_zero() const noexcept {
     return degree() == 0U && std::abs(coefficients_[0]) <= kCoefficientEpsilon;
 }
@@ -107,8 +114,7 @@ double Polynomial::coefficient_or_zero(std::size_t power) const noexcept {
     return power < effective_size() ? coefficients_[power] : 0.0;
 }
 void Polynomial::normalize(std::vector<double>& coefficients) noexcept {
-    while (coefficients.size() > 1U &&
-           std::abs(coefficients.back()) <= kCoefficientEpsilon) {
+    while (coefficients.size() > 1U && std::abs(coefficients.back()) <= kCoefficientEpsilon) {
         coefficients.pop_back();
     }
     if (coefficients.size() == 1U && std::abs(coefficients.front()) <= kCoefficientEpsilon) {
@@ -123,7 +129,9 @@ void Polynomial::require_finite(const std::vector<double>& coefficients) {
     }
 }
 Polynomial Polynomial::from_raw(std::vector<double> raw) {
-    if (raw.empty()) { raw.push_back(0.0); }
+    if (raw.empty()) {
+        raw.push_back(0.0);
+    }
     if (raw.size() - 1U > kMaxDegree) {
         throw InvalidDegreeError(static_cast<int>(raw.size() - 1U));
     }
@@ -133,18 +141,25 @@ Polynomial Polynomial::from_raw(std::vector<double> raw) {
     result.coefficients_.swap(raw);
     return result;
 }
-void Polynomial::swap(Polynomial& other) noexcept { coefficients_.swap(other.coefficients_); }
+void Polynomial::swap(Polynomial& other) noexcept {
+    coefficients_.swap(other.coefficients_);
+}
 bool Polynomial::operator==(const Polynomial& other) const noexcept {
-    if (degree() != other.degree()) { return false; }
+    if (degree() != other.degree()) {
+        return false;
+    }
     for (std::size_t power = 0; power <= degree(); ++power) {
-        if (std::abs(coefficient_or_zero(power) - other.coefficient_or_zero(power)) >
-            kCoefficientEpsilon) { return false; }
+        if (std::abs(coefficient_or_zero(power) - other.coefficient_or_zero(power)) > kCoefficientEpsilon) {
+            return false;
+        }
     }
     return true;
 }
-bool Polynomial::operator!=(const Polynomial& other) const noexcept { return !(*this == other); }
+bool Polynomial::operator!=(const Polynomial& other) const noexcept {
+    return !(*this == other);
+}
 
-}  // namespace polynomial
+} // namespace polynomial
 
 #include <cerrno>
 #include <cstdlib>
@@ -193,8 +208,7 @@ Polynomial& Polynomial::operator*=(const Polynomial& rhs) {
     std::vector<double> raw(result_degree + 1U, 0.0);
     for (std::size_t left_power = 0; left_power <= degree(); ++left_power) {
         for (std::size_t right_power = 0; right_power <= rhs.degree(); ++right_power) {
-            raw[left_power + right_power] += coefficient_or_zero(left_power) *
-                                             rhs.coefficient_or_zero(right_power);
+            raw[left_power + right_power] += coefficient_or_zero(left_power) * rhs.coefficient_or_zero(right_power);
         }
     }
     require_finite(raw);
@@ -204,7 +218,9 @@ Polynomial& Polynomial::operator*=(const Polynomial& rhs) {
 }
 
 Polynomial& Polynomial::operator/=(const Polynomial& rhs) {
-    if (rhs.is_zero()) { throw DivisionByZeroPolynomialError(); }
+    if (rhs.is_zero()) {
+        throw DivisionByZeroPolynomialError();
+    }
     if (is_zero() || degree() < rhs.degree()) {
         Polynomial zero;
         swap(zero);
@@ -226,9 +242,7 @@ Polynomial& Polynomial::operator/=(const Polynomial& rhs) {
 
 namespace {
 
-void subtract_scaled_divisor(std::vector<double>& remainder,
-                             const Polynomial& divisor,
-                             std::size_t shift,
+void subtract_scaled_divisor(std::vector<double>& remainder, const Polynomial& divisor, std::size_t shift,
                              double factor) {
     for (std::size_t power = 0; power <= divisor.degree(); ++power) {
         remainder[shift + power] -= factor * divisor[power];
@@ -238,14 +252,13 @@ void subtract_scaled_divisor(std::vector<double>& remainder,
     }
 }
 
-void divide_step(std::vector<double>& quotient,
-                 std::vector<double>& remainder,
-                 const Polynomial& divisor,
-                 std::size_t shift,
-                 double divisor_lead) {
+void divide_step(std::vector<double>& quotient, std::vector<double>& remainder, const Polynomial& divisor,
+                 std::size_t shift, double divisor_lead) {
     const std::size_t leading_power = shift + divisor.degree();
     const double factor = remainder[leading_power] / divisor_lead;
-    if (!std::isfinite(factor)) { throw NonFiniteCoefficientError(shift); }
+    if (!std::isfinite(factor)) {
+        throw NonFiniteCoefficientError(shift);
+    }
     quotient[shift] = factor;
     subtract_scaled_divisor(remainder, divisor, shift, factor);
 }
@@ -253,34 +266,46 @@ void divide_step(std::vector<double>& quotient,
 class StreamState final {
 public:
     explicit StreamState(std::ostream& output)
-        : output_(output), flags_(output.flags()), precision_(output.precision()) {}
+        : output_(output), flags_(output.flags()), precision_(output.precision()) {
+    }
     ~StreamState() noexcept {
         output_.flags(flags_);
         output_.precision(precision_);
     }
     StreamState(const StreamState&) = delete;
     StreamState& operator=(const StreamState&) = delete;
+
 private:
     std::ostream& output_;
     std::ios_base::fmtflags flags_;
     std::streamsize precision_;
 };
 
-bool is_digit(char character) { return character >= '0' && character <= '9'; }
+bool is_digit(char character) {
+    return character >= '0' && character <= '9';
+}
 
 bool is_integer_token(const std::string& token) {
-    if (token.empty()) { return false; }
+    if (token.empty()) {
+        return false;
+    }
     std::size_t index = (token.front() == '+' || token.front() == '-') ? 1U : 0U;
-    if (index == token.size()) { return false; }
+    if (index == token.size()) {
+        return false;
+    }
     for (; index < token.size(); ++index) {
-        if (!is_digit(token[index])) { return false; }
+        if (!is_digit(token[index])) {
+            return false;
+        }
     }
     return true;
 }
 
 int read_degree(std::istream& input) {
     std::string token;
-    if (!(input >> token)) { throw InvalidPolynomialFormatError::degree_missing(); }
+    if (!(input >> token)) {
+        throw InvalidPolynomialFormatError::degree_missing();
+    }
     if (!is_integer_token(token)) {
         throw InvalidPolynomialFormatError::degree_not_integer(token);
     }
@@ -304,7 +329,9 @@ int read_degree(std::istream& input) {
 }
 
 bool is_coefficient_token(const std::string& token) {
-    if (token.empty()) { return false; }
+    if (token.empty()) {
+        return false;
+    }
     std::size_t index = (token.front() == '+' || token.front() == '-') ? 1U : 0U;
     std::size_t integer_digits = 0U;
     while (index < token.size() && is_digit(token[index])) {
@@ -319,24 +346,43 @@ bool is_coefficient_token(const std::string& token) {
             ++fractional_digits;
         }
     }
-    if (integer_digits == 0U && fractional_digits == 0U) { return false; }
+    if (integer_digits == 0U && fractional_digits == 0U) {
+        return false;
+    }
     if (index < token.size() && (token[index] == 'e' || token[index] == 'E')) {
         ++index;
-        if (index < token.size() && (token[index] == '+' || token[index] == '-')) { ++index; }
+        if (index < token.size() && (token[index] == '+' || token[index] == '-')) {
+            ++index;
+        }
         const std::size_t exponent_start = index;
-        while (index < token.size() && is_digit(token[index])) { ++index; }
-        if (index == exponent_start) { return false; }
+        while (index < token.size() && is_digit(token[index])) {
+            ++index;
+        }
+        if (index == exponent_start) {
+            return false;
+        }
     }
     return index == token.size();
 }
 
+} // namespace
 
-}  // namespace
-
-Polynomial operator+(Polynomial lhs, const Polynomial& rhs) { lhs += rhs; return lhs; }
-Polynomial operator-(Polynomial lhs, const Polynomial& rhs) { lhs -= rhs; return lhs; }
-Polynomial operator*(Polynomial lhs, const Polynomial& rhs) { lhs *= rhs; return lhs; }
-Polynomial operator/(Polynomial lhs, const Polynomial& rhs) { lhs /= rhs; return lhs; }
+Polynomial operator+(Polynomial lhs, const Polynomial& rhs) {
+    lhs += rhs;
+    return lhs;
+}
+Polynomial operator-(Polynomial lhs, const Polynomial& rhs) {
+    lhs -= rhs;
+    return lhs;
+}
+Polynomial operator*(Polynomial lhs, const Polynomial& rhs) {
+    lhs *= rhs;
+    return lhs;
+}
+Polynomial operator/(Polynomial lhs, const Polynomial& rhs) {
+    lhs /= rhs;
+    return lhs;
+}
 
 std::ostream& operator<<(std::ostream& out, const Polynomial& value) {
     StreamState state(out);
@@ -366,7 +412,9 @@ std::istream& operator>>(std::istream& in, Polynomial& value) {
         if (end == token.c_str() || *end != '\0') {
             throw InvalidPolynomialFormatError::coefficient_not_number(token);
         }
-        if (!std::isfinite(coefficient)) { throw NonFiniteCoefficientError(power); }
+        if (!std::isfinite(coefficient)) {
+            throw NonFiniteCoefficientError(power);
+        }
         coefficients.push_back(coefficient);
     }
     Polynomial parsed(degree, coefficients);
@@ -374,4 +422,4 @@ std::istream& operator>>(std::istream& in, Polynomial& value) {
     return in;
 }
 
-}  // namespace polynomial
+} // namespace polynomial
