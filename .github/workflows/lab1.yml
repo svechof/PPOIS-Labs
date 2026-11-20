@@ -2,7 +2,7 @@ name: Lab 1 CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/lab1]
     tags: ["v*"]
     paths:
       - "lab1/**"
