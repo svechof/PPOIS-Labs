@@ -42,39 +42,6 @@ jobs:
             ~/.cache/ccache
           key: quality-${{ runner.os }}-${{ hashFiles('lab1/CMakeLists.txt') }}
           restore-keys: quality-${{ runner.os }}-
-      - name: Configure temporary clang-tidy rules
-        run: |
-          cat > lab1/.clang-tidy <<'TIDY'
-          Checks: >-
-            -*,bugprone-*,clang-analyzer-*,misc-*,performance-*,
-            readability-*,cppcoreguidelines-special-member-functions,
-            cppcoreguidelines-pro-type-member-init,
-            -modernize-use-trailing-return-type,
-            -misc-non-private-member-variables-in-classes,
-            -readability-function-size,-readability-magic-numbers
-          WarningsAsErrors: '*'
-          HeaderFilterRegex: '(lab1/include|lab1/src|lab1/cli)/.*'
-          CheckOptions:
-            readability-identifier-length.MinimumVariableNameLength: '3'
-            readability-identifier-length.MinimumParameterNameLength: '3'
-            readability-identifier-length.MinimumLoopCounterNameLength: '3'
-            readability-identifier-naming.NamespaceCase: lower_case
-            readability-identifier-naming.ClassCase: CamelCase
-            readability-identifier-naming.StructCase: CamelCase
-            readability-identifier-naming.EnumCase: CamelCase
-            readability-identifier-naming.EnumConstantCase: CamelCase
-            readability-identifier-naming.EnumConstantPrefix: k
-            readability-identifier-naming.FunctionCase: lower_case
-            readability-identifier-naming.MethodCase: lower_case
-            readability-identifier-naming.VariableCase: lower_case
-            readability-identifier-naming.ParameterCase: lower_case
-            readability-identifier-naming.PrivateMemberCase: lower_case
-            readability-identifier-naming.PrivateMemberSuffix: _
-            readability-identifier-naming.ConstexprVariableCase: CamelCase
-            readability-identifier-naming.ConstexprVariablePrefix: k
-            cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions: true
-            cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: true
-          TIDY
       - name: Configure lint compilation database
         run: cmake -S lab1 -B lab1/build-lint -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DLAB1_BUILD_TESTS=OFF
       - name: Verify source formatting
