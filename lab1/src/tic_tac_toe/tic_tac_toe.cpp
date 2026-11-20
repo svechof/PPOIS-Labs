@@ -104,15 +104,10 @@ InvalidBoardFormatError InvalidBoardFormatError::row_has_wrong_length(std::size_
 
 TicTacToe::TicTacToe() : TicTacToe(kDefaultBoardSize) {
 }
-TicTacToe::TicTacToe(std::size_t size) : size_(validated_size(size)), cells_(new Mark[size_ * size_]) {
-    std::fill(cells_, cells_ + (size_ * size_), Mark::kEmpty);
+TicTacToe::TicTacToe(std::size_t size) : size_(validated_size(size)), cells_(size_ * size_, Mark::kEmpty) {
 }
-TicTacToe::TicTacToe(const TicTacToe& other) : size_(other.size_), cells_(new Mark[other.size_ * other.size_]) {
-    std::copy(other.cells_, other.cells_ + (size_ * size_), cells_);
-}
-TicTacToe::~TicTacToe() noexcept {
-    delete[] cells_;
-}
+TicTacToe::TicTacToe(const TicTacToe& other) = default;
+TicTacToe::~TicTacToe() noexcept = default;
 TicTacToe& TicTacToe::operator=(const TicTacToe& other) {
     if (this != &other) {
         TicTacToe copy(other);
@@ -121,7 +116,7 @@ TicTacToe& TicTacToe::operator=(const TicTacToe& other) {
     return *this;
 }
 bool TicTacToe::operator==(const TicTacToe& other) const noexcept {
-    return size_ == other.size_ && std::equal(cells_, cells_ + (size_ * size_), other.cells_);
+    return size_ == other.size_ && cells_ == other.cells_;
 }
 bool TicTacToe::operator!=(const TicTacToe& other) const noexcept {
     return !(*this == other);
@@ -130,10 +125,10 @@ std::size_t TicTacToe::size() const noexcept {
     return size_;
 }
 const Mark& TicTacToe::operator[](Position position) const {
-    return cells_[index_of(position)];
+    return cells_.at(index_of(position));
 }
 Mark& TicTacToe::operator[](Position position) {
-    return cells_[index_of(position)];
+    return cells_.at(index_of(position));
 }
 bool TicTacToe::can_place(Position position, Mark mark) const noexcept {
     const bool real_mark = mark == Mark::kCross || mark == Mark::kNought;
@@ -168,7 +163,7 @@ bool TicTacToe::is_draw() const noexcept {
     return is_full() && winner() == Mark::kEmpty;
 }
 std::size_t TicTacToe::count(Mark mark) const noexcept {
-    return static_cast<std::size_t>(std::count(cells_, cells_ + (size_ * size_), mark));
+    return static_cast<std::size_t>(std::count(cells_.begin(), cells_.end(), mark));
 }
 Mark TicTacToe::next_mark() const noexcept {
     return count(Mark::kCross) > count(Mark::kNought) ? Mark::kNought : Mark::kCross;
@@ -181,10 +176,10 @@ std::size_t TicTacToe::index_of(Position position) const {
 }
 void TicTacToe::swap(TicTacToe& other) noexcept {
     std::swap(size_, other.size_);
-    std::swap(cells_, other.cells_);
+    cells_.swap(other.cells_);
 }
 bool TicTacToe::is_row_owned_by(Mark mark, std::size_t row) const noexcept {
-    const Mark* begin = cells_ + (row * size_);
+    const Mark* begin = cells_.data() + (row * size_);
     return std::all_of(begin, begin + size_, [mark](Mark cell) { return cell == mark; });
 }
 bool TicTacToe::is_column_owned_by(Mark mark, std::size_t col) const noexcept {

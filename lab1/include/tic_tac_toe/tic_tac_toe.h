@@ -2,8 +2,11 @@
 
 #include <cstddef>
 #include <iosfwd>
+#include <limits>
+#include <new>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 /// @defgroup tic_tac_toe Крестики-нолики
 /// @brief Игровое поле и правила игры «Крестики-нолики».
@@ -39,6 +42,48 @@ enum class Mark : char {
     kCross = 'X',  ///< В клетке стоит крестик.
     kNought = 'O', ///< В клетке стоит нолик.
 };
+
+namespace detail {
+
+/// @brief Аллокатор, использующий парные функции выделения и освобождения new[].
+template <typename T> class NewArrayAllocator {
+public:
+    using value_type = T;
+
+    NewArrayAllocator() noexcept = default;
+
+    template <typename U> explicit NewArrayAllocator(const NewArrayAllocator<U>& other) noexcept {
+        static_cast<void>(other);
+    }
+
+    [[nodiscard]] T* allocate(std::size_t count) {
+        if (count > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
+            throw std::bad_array_new_length();
+        }
+        return static_cast<T*>(::operator new[](count * sizeof(T)));
+    }
+
+    void deallocate(T* memory, std::size_t count) noexcept {
+        static_cast<void>(count);
+        ::operator delete[](memory);
+    }
+};
+
+template <typename T, typename U>
+[[nodiscard]] bool operator==(const NewArrayAllocator<T>& lhs, const NewArrayAllocator<U>& rhs) noexcept {
+    static_cast<void>(lhs);
+    static_cast<void>(rhs);
+    return true;
+}
+
+template <typename T, typename U>
+[[nodiscard]] bool operator!=(const NewArrayAllocator<T>& lhs, const NewArrayAllocator<U>& rhs) noexcept {
+    static_cast<void>(lhs);
+    static_cast<void>(rhs);
+    return false;
+}
+
+} // namespace detail
 
 /// @brief Преобразует метку в символ текстового формата.
 /// @param mark Преобразуемая метка.
@@ -125,7 +170,8 @@ public:
 };
 
 /// @brief Квадратное поле «Крестики-нолики» размером от 3×3 до 10×10.
-/// @details Класс единолично владеет одномерным динамическим массивом клеток.
+/// @details Класс единолично владеет одномерным буфером клеток (std::vector
+///          с аллокатором, использующим new[]).
 ///          Реализовано правило трёх: деструктор, копирующий конструктор,
 ///          копирующее присваивание. Перемещение не объявляется.
 /// @invariant `kMinBoardSize <= size() <= kMaxBoardSize`.
@@ -264,7 +310,7 @@ private:
     [[nodiscard]] bool has_full_line(Mark mark) const noexcept;
 
     std::size_t size_;
-    Mark* cells_;
+    std::vector<Mark, detail::NewArrayAllocator<Mark>> cells_;
 };
 
 /// @brief Записывает поле в каноническом текстовом формате.
