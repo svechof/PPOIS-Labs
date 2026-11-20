@@ -78,8 +78,7 @@ std::optional<tic_tac_toe::Position> parse_move(const std::string& line) {
 char uppercase(char value) {
     return static_cast<char>(std::toupper(static_cast<unsigned char>(value)));
 }
-template <typename Error>
-bool is_current_exception() {
+template <typename Error> bool is_current_exception() {
     try {
         throw;
     } catch (const Error&) {
@@ -94,8 +93,7 @@ struct ErrorRule {
     std::string_view message;
 };
 
-template <typename Error>
-constexpr ErrorRule make_rule(std::string_view message) {
+template <typename Error> constexpr ErrorRule make_rule(std::string_view message) {
     return {&is_current_exception<Error>, message};
 }
 
@@ -107,11 +105,13 @@ constexpr std::array kErrorRules = {
     make_rule<tic_tac_toe::InvalidMarkError>("Недопустимая метка. Используйте X, O или точку."),
     make_rule<tic_tac_toe::InvalidBoardFormatError>("Неверный формат игрового поля."),
     make_rule<polynomial::InvalidDegreeError>("Недопустимая степень многочлена. Допустимы значения от 0 до 1000."),
-    make_rule<polynomial::CoefficientCountMismatchError>("Количество коэффициентов не соответствует степени многочлена."),
+    make_rule<polynomial::CoefficientCountMismatchError>(
+        "Количество коэффициентов не соответствует степени многочлена."),
     make_rule<polynomial::CoefficientIndexError>("Индекс коэффициента выходит за допустимые границы."),
     make_rule<polynomial::NonFiniteCoefficientError>("Коэффициент должен быть конечным числом."),
     make_rule<polynomial::DivisionByZeroPolynomialError>("Деление на нулевой многочлен невозможно."),
-    make_rule<polynomial::InvalidPolynomialFormatError>("Неверный формат многочлена. Проверьте степень и коэффициенты."),
+    make_rule<polynomial::InvalidPolynomialFormatError>(
+        "Неверный формат многочлена. Проверьте степень и коэффициенты."),
     make_rule<InputClosedError>(kInputClosedText),
 };
 
@@ -309,16 +309,11 @@ bool TicTacToeMenu::execute(int choice) {
 }
 void TicTacToeMenu::dispatch(int choice) {
     const std::array<std::function<void()>, kTicTacToeActionCount> actions = {
-        [this] { play_full_game(); },
-        [this] { create_board(); },
-        [this] { show_board(); },
-        [this] { check_placement(); },
-        [this] { read_cell(); },
-        [this] { write_cell(); },
-        [this] { place_mark(); },
-        [this] { check_winner(); },
-        [this] { demonstrate_copy(); },
-        [this] { demonstrate_text_format(); },
+        [this] { play_full_game(); },   [this] { create_board(); },
+        [this] { show_board(); },       [this] { check_placement(); },
+        [this] { read_cell(); },        [this] { write_cell(); },
+        [this] { place_mark(); },       [this] { check_winner(); },
+        [this] { demonstrate_copy(); }, [this] { demonstrate_text_format(); },
     };
     actions.at(static_cast<std::size_t>(choice - 1))();
 }
