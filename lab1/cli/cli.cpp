@@ -608,9 +608,7 @@ void PolynomialMenu::demonstrate_copy() {
     polynomial_b_ = copy;
     polynomial::Polynomial& same_polynomial = polynomial_b_;
     polynomial_b_ = same_polynomial;
-    output_ << (polynomial_b_ == copy
-                ? "Присваивание и самоприсваивание выполнены\n"
-                : "Ошибка копирования\n");
+    output_ << (polynomial_b_ == copy ? "Присваивание и самоприсваивание выполнены\n" : "Ошибка копирования\n");
 }
 
 Application::Application(std::istream& input, std::ostream& output) : input_(input), output_(output) {
