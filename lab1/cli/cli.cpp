@@ -1,19 +1,44 @@
 #include "cli.h"
 
-#include <algorithm>
+#include "polynomial/polynomial.h"
+#include "tic_tac_toe/tic_tac_toe.h"
+
+#include <array>
 #include <cctype>
 #include <cmath>
+#include <cstddef>
+#include <exception>
+#include <functional>
 #include <iomanip>
+#include <ios>
 #include <istream>
 #include <limits>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <vector>
+#include <string_view>
 
 namespace cli {
 namespace {
+
+constexpr int kInvalidChoice = -1;
+constexpr int kMainMaxChoice = 2;
+constexpr int kTicTacToeActionCount = 10;
+constexpr int kPolynomialActionCount = 13;
+constexpr std::string_view kInputClosedText = "Ввод завершён";
+
+class UnknownOperationError : public std::invalid_argument {
+public:
+    UnknownOperationError() : std::invalid_argument("Unknown operation") {
+    }
+};
+
+class InputClosedError : public std::runtime_error {
+public:
+    InputClosedError() : std::runtime_error(std::string(kInputClosedText)) {
+    }
+};
 
 bool parse_integer(const std::string& text, int& value) {
     std::istringstream parser(text);
@@ -34,41 +59,104 @@ bool parse_double(const std::string& text, double& value) {
 char uppercase(char value) {
     return static_cast<char>(std::toupper(static_cast<unsigned char>(value)));
 }
-void print_error(std::ostream& output, const std::exception& error) {
-    const std::string details = error.what();
-    std::string message = "Не удалось выполнить действие. Проверьте введённые данные.";
-
-    if (details.find("Unknown operation") != std::string::npos) {
-        message = "Неизвестная операция. Используйте +, -, * или /.";
-    } else if (details.find("Invalid board size:") != std::string::npos) {
-        message = "Недопустимый размер поля. Допустимый размер — от 3 до 10.";
-    } else if (details.find("Cell is already occupied:") != std::string::npos) {
-        message = "Клетка уже занята. Выберите другую клетку.";
-    } else if (details.find("Position out of range:") != std::string::npos) {
-        message = "Координаты выходят за пределы игрового поля.";
-    } else if (details.find("Invalid mark:") != std::string::npos) {
-        message = "Недопустимая метка. Используйте X, O или точку.";
-    } else if (details.find("Invalid board format:") != std::string::npos) {
-        message = "Неверный формат игрового поля.";
-    } else if (details.find("Invalid degree:") != std::string::npos ||
-               details.find("Invalid polynomial degree:") != std::string::npos) {
-        message = "Недопустимая степень многочлена. Допустимы значения от 0 до 1000.";
-    } else if (details.find("Coefficient count mismatch:") != std::string::npos ||
-               details.find("Invalid coefficient count:") != std::string::npos) {
-        message = "Количество коэффициентов не соответствует степени многочлена.";
-    } else if (details.find("Coefficient index out of range:") != std::string::npos) {
-        message = "Индекс коэффициента выходит за допустимые границы.";
-    } else if (details.find("Non-finite coefficient") != std::string::npos) {
-        message = "Коэффициент должен быть конечным числом.";
-    } else if (details.find("Division by zero polynomial") != std::string::npos) {
-        message = "Деление на нулевой многочлен невозможно.";
-    } else if (details.find("Invalid polynomial format:") != std::string::npos) {
-        message = "Неверный формат многочлена. Проверьте степень и коэффициенты.";
-    } else if (details == "Ввод завершён") {
-        message = details;
+template <typename Error>
+bool is_current_exception() {
+    try {
+        throw;
+    } catch (const Error&) {
+        return true;
+    } catch (...) {
+        return false;
     }
+}
 
+struct ErrorRule {
+    bool (*matches)();
+    std::string_view message;
+};
+
+constexpr std::array kErrorRules = {
+    ErrorRule{&is_current_exception<UnknownOperationError>, "Неизвестная операция. Используйте +, -, * или /."},
+    ErrorRule{&is_current_exception<tic_tac_toe::InvalidBoardSizeError>,
+              "Недопустимый размер поля. Допустимый размер — от 3 до 10."},
+    ErrorRule{&is_current_exception<tic_tac_toe::CellOccupiedError>, "Клетка уже занята. Выберите другую клетку."},
+    ErrorRule{&is_current_exception<tic_tac_toe::PositionOutOfRangeError>,
+              "Координаты выходят за пределы игрового поля."},
+    ErrorRule{&is_current_exception<tic_tac_toe::InvalidMarkError>, "Недопустимая метка. Используйте X, O или точку."},
+    ErrorRule{&is_current_exception<tic_tac_toe::InvalidBoardFormatError>, "Неверный формат игрового поля."},
+    ErrorRule{&is_current_exception<polynomial::InvalidDegreeError>,
+              "Недопустимая степень многочлена. Допустимы значения от 0 до 1000."},
+    ErrorRule{&is_current_exception<polynomial::CoefficientCountMismatchError>,
+              "Количество коэффициентов не соответствует степени многочлена."},
+    ErrorRule{&is_current_exception<polynomial::CoefficientIndexError>,
+              "Индекс коэффициента выходит за допустимые границы."},
+    ErrorRule{&is_current_exception<polynomial::NonFiniteCoefficientError>,
+              "Коэффициент должен быть конечным числом."},
+    ErrorRule{&is_current_exception<polynomial::DivisionByZeroPolynomialError>,
+              "Деление на нулевой многочлен невозможно."},
+    ErrorRule{&is_current_exception<polynomial::InvalidPolynomialFormatError>,
+              "Неверный формат многочлена. Проверьте степень и коэффициенты."},
+    ErrorRule{&is_current_exception<InputClosedError>, kInputClosedText},
+};
+
+// Must be called from a catch handler: it inspects the exception being handled.
+void print_error(std::ostream& output) {
+    std::string_view message = "Не удалось выполнить действие. Проверьте введённые данные.";
+    for (const ErrorRule& rule : kErrorRules) {
+        if (rule.matches()) {
+            message = rule.message;
+            break;
+        }
+    }
     output << messages::kErrorPrefix << message << '\n';
+}
+int read_menu_choice(Console& console, int max_choice) {
+    const std::string line = console.read_line(messages::kChoicePrompt);
+    int choice = kInvalidChoice;
+    if (!parse_integer(line, choice) || choice < 0 || choice > max_choice) {
+        console.print_line(messages::kInvalidInput);
+        return kInvalidChoice;
+    }
+    return choice;
+}
+int next_choice(Console& console, int max_choice) {
+    try {
+        return read_menu_choice(console, max_choice);
+    } catch (const std::runtime_error&) {
+        return kExitChoice;
+    }
+}
+struct Term {
+    double coefficient;
+    std::size_t power;
+};
+void write_sign(std::ostream& output, const Term& term, bool has_previous) {
+    if (has_previous) {
+        output << (term.coefficient < 0.0 ? " - " : " + ");
+    } else if (term.coefficient < 0.0) {
+        output << '-';
+    }
+}
+void write_magnitude(std::ostream& output, const Term& term) {
+    const double magnitude = std::abs(term.coefficient);
+    const bool unit = std::abs(magnitude - 1.0) <= polynomial::kCoefficientEpsilon;
+    if (term.power == 0U || !unit) {
+        output << magnitude;
+    }
+    if (term.power > 0U) {
+        output << 'x';
+    }
+    if (term.power > 1U) {
+        output << '^' << term.power;
+    }
+}
+bool append_term(std::ostream& output, const Term& term, bool has_previous) {
+    if (std::abs(term.coefficient) <= polynomial::kCoefficientEpsilon) {
+        return has_previous;
+    }
+    write_sign(output, term, has_previous);
+    write_magnitude(output, term);
+    return true;
 }
 void require_single_line_end(std::istringstream& input) {
     input >> std::ws;
@@ -97,7 +185,7 @@ std::string Console::read_line(std::string_view prompt) {
     output_ << prompt;
     std::string line;
     if (!std::getline(input_, line)) {
-        throw std::runtime_error("Ввод завершён");
+        throw InputClosedError();
     }
     return line;
 }
@@ -154,7 +242,7 @@ void Console::print_invalid_input() {
     print_line(messages::kInvalidInput);
 }
 
-void BoardView::render(std::ostream& output, const tic_tac_toe::TicTacToe& board) const {
+void BoardView::render(std::ostream& output, const tic_tac_toe::TicTacToe& board) {
     output << std::setw(kIndexWidth) << ' ';
     for (std::size_t col = 0; col < board.size(); ++col) {
         output << std::setw(kCellWidth) << col + 1U;
@@ -168,110 +256,59 @@ void BoardView::render(std::ostream& output, const tic_tac_toe::TicTacToe& board
         output << '\n';
     }
 }
-void PolynomialView::render(std::ostream& output, char name, const polynomial::Polynomial& value) const {
+void PolynomialView::render(std::ostream& output, char name, const polynomial::Polynomial& value) {
     output << name << ": " << value << ", " << algebraic(value) << '\n';
 }
-std::string PolynomialView::algebraic(const polynomial::Polynomial& value) const {
+std::string PolynomialView::algebraic(const polynomial::Polynomial& value) {
     std::ostringstream output;
     bool has_previous = false;
-    const auto old_flags = output.flags();
-    const std::streamsize old_precision = output.precision();
     output << std::defaultfloat << std::setprecision(kDisplayPrecision);
     for (std::size_t power = value.degree() + 1U; power > 0U; --power) {
-        append_term(output, value, power - 1U, has_previous);
+        has_previous = append_term(output, Term{value[power - 1U], power - 1U}, has_previous);
     }
-    output.flags(old_flags);
-    output.precision(old_precision);
     return has_previous ? output.str() : "0";
-}
-void PolynomialView::append_term(std::ostream& output, const polynomial::Polynomial& value, std::size_t power,
-                                 bool& has_previous) const {
-    const double coefficient = value[power];
-    if (std::abs(coefficient) <= polynomial::kCoefficientEpsilon) {
-        return;
-    }
-    if (has_previous) {
-        output << (coefficient < 0.0 ? " - " : " + ");
-    } else if (coefficient < 0.0) {
-        output << '-';
-    }
-    const double magnitude = std::abs(coefficient);
-    const bool variable = power > 0U;
-    const bool unit = std::abs(magnitude - 1.0) <= polynomial::kCoefficientEpsilon;
-    if (!variable || !unit) {
-        output << magnitude;
-    }
-    if (variable) {
-        output << 'x';
-    }
-    if (power > 1U) {
-        output << '^' << power;
-    }
-    has_previous = true;
 }
 
 TicTacToeMenu::TicTacToeMenu(std::istream& input, std::ostream& output)
-    : input_(input), output_(output), console_(input, output), board_view_(), game_() {
+    : input_(input), output_(output), console_(input, output) {
 }
 void TicTacToeMenu::run() {
     while (input_) {
         show_menu();
-        int choice = -1;
-        try {
-            const std::string line = console_.read_line(messages::kChoicePrompt);
-            if (!parse_integer(line, choice) || choice < 0 || choice > 10) {
-                console_.print_line(messages::kInvalidInput);
-                continue;
-            }
-        } catch (const std::runtime_error&) {
+        const int choice = next_choice(console_, kTicTacToeActionCount);
+        if (choice == kExitChoice) {
             return;
         }
-        if (choice == 0) {
+        if (choice != kInvalidChoice && !execute(choice)) {
             return;
-        }
-        try {
-            switch (choice) {
-            case 1:
-                play_full_game();
-                break;
-            case 2:
-                create_board();
-                break;
-            case 3:
-                show_board();
-                break;
-            case 4:
-                check_placement();
-                break;
-            case 5:
-                read_cell();
-                break;
-            case 6:
-                write_cell();
-                break;
-            case 7:
-                place_mark();
-                break;
-            case 8:
-                check_winner();
-                break;
-            case 9:
-                demonstrate_copy();
-                break;
-            case 10:
-                demonstrate_text_format();
-                break;
-            default:
-                console_.print_line(messages::kInvalidInput);
-                break;
-            }
-        } catch (const std::exception& error) {
-            if (!input_) {
-                return;
-            }
-            print_error(output_, error);
         }
     }
+}
+bool TicTacToeMenu::execute(int choice) {
+    try {
+        dispatch(choice);
+    } catch (const std::exception&) {
+        if (!input_) {
+            return false;
+        }
+        print_error(output_);
+    }
+    return true;
+}
+void TicTacToeMenu::dispatch(int choice) {
+    const std::array<std::function<void()>, kTicTacToeActionCount> actions = {{
+        [this] { play_full_game(); },
+        [this] { create_board(); },
+        [this] { show_board(); },
+        [this] { check_placement(); },
+        [this] { read_cell(); },
+        [this] { write_cell(); },
+        [this] { place_mark(); },
+        [this] { check_winner(); },
+        [this] { demonstrate_copy(); },
+        [this] { demonstrate_text_format(); },
+    }};
+    actions.at(static_cast<std::size_t>(choice - 1))();
 }
 void TicTacToeMenu::show_menu() const {
     output_ << messages::kTicTacToeTitle << '\n' << messages::kTicTacToeMenu;
@@ -325,7 +362,7 @@ void TicTacToeMenu::create_board() {
     show_board();
 }
 void TicTacToeMenu::show_board() const {
-    board_view_.render(output_, game_);
+    BoardView::render(output_, game_);
 }
 void TicTacToeMenu::check_placement() {
     const tic_tac_toe::Position position = read_position();
@@ -371,7 +408,7 @@ void TicTacToeMenu::demonstrate_copy() {
     tic_tac_toe::TicTacToe assigned;
     assigned = game_;
     output_ << (assigned == game_ ? messages::kAssignmentEqual : messages::kCopyDifferent) << '\n';
-    tic_tac_toe::TicTacToe& same_board = assigned;
+    const tic_tac_toe::TicTacToe& same_board = assigned;
     assigned = same_board;
 }
 void TicTacToeMenu::demonstrate_text_format() {
@@ -411,76 +448,48 @@ void TicTacToeMenu::play_one_turn(const std::string& line) {
 }
 
 PolynomialMenu::PolynomialMenu(std::istream& input, std::ostream& output)
-    : input_(input), output_(output), console_(input, output), polynomial_view_(), polynomial_a_(), polynomial_b_() {
+    : input_(input), output_(output), console_(input, output) {
 }
 void PolynomialMenu::run() {
     while (input_) {
         show_menu();
-        int choice = -1;
-        try {
-            const std::string line = console_.read_line(messages::kChoicePrompt);
-            if (!parse_integer(line, choice) || choice < 0 || choice > 13) {
-                console_.print_line(messages::kInvalidInput);
-                continue;
-            }
-        } catch (const std::runtime_error&) {
+        const int choice = next_choice(console_, kPolynomialActionCount);
+        if (choice == kExitChoice) {
             return;
         }
-        if (choice == 0) {
+        if (choice != kInvalidChoice && !execute(choice)) {
             return;
-        }
-        try {
-            switch (choice) {
-            case 1:
-                set_polynomial();
-                break;
-            case 2:
-                read_polynomial_text();
-                break;
-            case 3:
-                show_polynomials();
-                break;
-            case 4:
-                read_coefficient();
-                break;
-            case 5:
-                write_coefficient();
-                break;
-            case 6:
-                evaluate_polynomial();
-                break;
-            case 7:
-                perform_binary_operation('+');
-                break;
-            case 8:
-                perform_binary_operation('-');
-                break;
-            case 9:
-                perform_binary_operation('*');
-                break;
-            case 10:
-                perform_binary_operation('/');
-                break;
-            case 11:
-                perform_compound_operation();
-                break;
-            case 12:
-                compare_polynomials();
-                break;
-            case 13:
-                demonstrate_copy();
-                break;
-            default:
-                console_.print_line(messages::kInvalidInput);
-                break;
-            }
-        } catch (const std::exception& error) {
-            if (!input_) {
-                return;
-            }
-            print_error(output_, error);
         }
     }
+}
+bool PolynomialMenu::execute(int choice) {
+    try {
+        dispatch(choice);
+    } catch (const std::exception&) {
+        if (!input_) {
+            return false;
+        }
+        print_error(output_);
+    }
+    return true;
+}
+void PolynomialMenu::dispatch(int choice) {
+    const std::array<std::function<void()>, kPolynomialActionCount> actions = {{
+        [this] { set_polynomial(); },
+        [this] { read_polynomial_text(); },
+        [this] { show_polynomials(); },
+        [this] { read_coefficient(); },
+        [this] { write_coefficient(); },
+        [this] { evaluate_polynomial(); },
+        [this] { perform_binary_operation('+'); },
+        [this] { perform_binary_operation('-'); },
+        [this] { perform_binary_operation('*'); },
+        [this] { perform_binary_operation('/'); },
+        [this] { perform_compound_operation(); },
+        [this] { compare_polynomials(); },
+        [this] { demonstrate_copy(); },
+    }};
+    actions.at(static_cast<std::size_t>(choice - 1))();
 }
 void PolynomialMenu::show_menu() const {
     output_ << messages::kPolynomialTitle << '\n' << messages::kPolynomialMenu;
@@ -505,7 +514,7 @@ polynomial::Polynomial& PolynomialMenu::target(char name) {
 }
 void PolynomialMenu::set_polynomial() {
     const char name = read_target_name(messages::kTargetPrompt);
-    polynomial::Polynomial parsed = read_structured_polynomial();
+    const polynomial::Polynomial parsed = read_structured_polynomial();
     target(name) = parsed;
     show_polynomials();
 }
@@ -526,11 +535,11 @@ void PolynomialMenu::read_polynomial_text() {
     parser >> parsed;
     require_single_line_end(parser);
     target(name) = parsed;
-    polynomial_view_.render(output_, name, target(name));
+    PolynomialView::render(output_, name, target(name));
 }
 void PolynomialMenu::show_polynomials() const {
-    polynomial_view_.render(output_, 'A', polynomial_a_);
-    polynomial_view_.render(output_, 'B', polynomial_b_);
+    PolynomialView::render(output_, 'A', polynomial_a_);
+    PolynomialView::render(output_, 'B', polynomial_b_);
 }
 void PolynomialMenu::read_coefficient() {
     const char name = read_target_name(messages::kTargetPrompt);
@@ -548,7 +557,7 @@ void PolynomialMenu::write_coefficient() {
     }
     const double coefficient = console_.read_double(messages::kCoefficientPrompt);
     target(name)[static_cast<std::size_t>(index)] = coefficient;
-    polynomial_view_.render(output_, name, target(name));
+    PolynomialView::render(output_, name, target(name));
 }
 void PolynomialMenu::evaluate_polynomial() {
     const char name = read_target_name(messages::kTargetPrompt);
@@ -572,9 +581,9 @@ void PolynomialMenu::perform_binary_operation(char operation) {
         console_.print_line(messages::kRemainderDiscarded);
         break;
     default:
-        throw std::invalid_argument("Unknown operation");
+        throw UnknownOperationError();
     }
-    output_ << result << ", " << polynomial_view_.algebraic(result) << '\n';
+    output_ << result << ", " << PolynomialView::algebraic(result) << '\n';
 }
 void PolynomialMenu::perform_compound_operation() {
     const char operation = console_.read_character(messages::kOperationPrompt);
@@ -593,9 +602,9 @@ void PolynomialMenu::perform_compound_operation() {
         console_.print_line(messages::kRemainderDiscarded);
         break;
     default:
-        throw std::invalid_argument("Unknown operation");
+        throw UnknownOperationError();
     }
-    polynomial_view_.render(output_, 'A', polynomial_a_);
+    PolynomialView::render(output_, 'A', polynomial_a_);
 }
 void PolynomialMenu::compare_polynomials() const {
     output_ << (polynomial_a_ == polynomial_b_ ? messages::kEqual : messages::kNotEqual) << '\n';
@@ -606,7 +615,7 @@ void PolynomialMenu::demonstrate_copy() {
     copy[0U] += 1.0;
     output_ << (copy == polynomial_a_ ? "A не изменился\n" : "Копия изменена; A не изменился\n");
     polynomial_b_ = copy;
-    polynomial::Polynomial& same_polynomial = polynomial_b_;
+    const polynomial::Polynomial& same_polynomial = polynomial_b_;
     polynomial_b_ = same_polynomial;
     output_ << (polynomial_b_ == copy ? "Присваивание и самоприсваивание выполнены\n" : "Ошибка копирования\n");
 }
@@ -615,38 +624,38 @@ Application::Application(std::istream& input, std::ostream& output) : input_(inp
 }
 void Application::run() {
     output_ << messages::kApplicationTitle << '\n';
-    while (input_) {
-        show_menu();
-        int choice = 0;
-        try {
-            choice = read_choice();
-        } catch (const std::runtime_error&) {
-            output_ << messages::kGoodbye << '\n';
-            return;
-        }
-        if (choice < 0 || choice > 2) {
-            output_ << messages::kInvalidInput << '\n';
-            continue;
-        }
-        try {
-            if (choice == 0) {
-                output_ << messages::kGoodbye << '\n';
-                return;
-            }
-            if (choice == 1) {
-                run_tic_tac_toe();
-            } else if (choice == 2) {
-                run_polynomial();
-            }
-        } catch (const std::exception& error) {
-            print_error(output_, error);
-            if (!input_) {
-                output_ << messages::kGoodbye << '\n';
-                return;
-            }
-        }
+    bool running = true;
+    while (running && input_) {
+        running = step();
     }
     output_ << messages::kGoodbye << '\n';
+}
+bool Application::step() {
+    show_menu();
+    int choice = kInvalidChoice;
+    try {
+        choice = read_choice();
+    } catch (const std::runtime_error&) {
+        return false;
+    }
+    if (choice < 0 || choice > kMainMaxChoice) {
+        output_ << messages::kInvalidInput << '\n';
+        return true;
+    }
+    return choice != kExitChoice && run_choice(choice);
+}
+bool Application::run_choice(int choice) {
+    try {
+        if (choice == 1) {
+            run_tic_tac_toe();
+        } else {
+            run_polynomial();
+        }
+    } catch (const std::exception&) {
+        print_error(output_);
+        return static_cast<bool>(input_);
+    }
+    return true;
 }
 void Application::show_menu() const {
     output_ << messages::kMainMenu;
@@ -654,9 +663,9 @@ void Application::show_menu() const {
 int Application::read_choice() {
     Console console(input_, output_);
     const std::string line = console.read_line(messages::kChoicePrompt);
-    int choice = -1;
+    int choice = kInvalidChoice;
     if (!parse_integer(line, choice)) {
-        return -1;
+        return kInvalidChoice;
     }
     return choice;
 }

@@ -161,20 +161,16 @@ private:
 class BoardView {
 public:
     /// @brief Выводит представление объекта.
-    void render(std::ostream& output, const tic_tac_toe::TicTacToe& board) const;
+    static void render(std::ostream& output, const tic_tac_toe::TicTacToe& board);
 };
 
 /// @brief Отображение многочлена в текстовой и алгебраической форме.
 class PolynomialView {
 public:
     /// @brief Выводит представление объекта.
-    void render(std::ostream& output, char name, const polynomial::Polynomial& value) const;
+    static void render(std::ostream& output, char name, const polynomial::Polynomial& value);
     /// @brief Формирует алгебраическую запись многочлена.
-    [[nodiscard]] std::string algebraic(const polynomial::Polynomial& value) const;
-
-private:
-    void append_term(std::ostream& output, const polynomial::Polynomial& value, std::size_t power,
-                     bool& has_previous) const;
+    [[nodiscard]] static std::string algebraic(const polynomial::Polynomial& value);
 };
 
 /// @brief Меню игры крестики-нолики.
@@ -188,6 +184,10 @@ public:
 private:
     /// @brief Выводит пункты меню.
     void show_menu() const;
+    /// @brief Выполняет выбранное действие; false, если ввод закончился.
+    [[nodiscard]] bool execute(int choice);
+    /// @brief Вызывает действие по номеру пункта меню.
+    void dispatch(int choice);
     /// @brief Читает позицию клетки.
     [[nodiscard]] tic_tac_toe::Position read_position();
     /// @brief Читает метку клетки.
@@ -218,7 +218,6 @@ private:
     std::istream& input_;
     std::ostream& output_;
     Console console_;
-    BoardView board_view_;
     tic_tac_toe::TicTacToe game_;
 };
 
@@ -233,6 +232,10 @@ public:
 private:
     /// @brief Выводит пункты меню.
     void show_menu() const;
+    /// @brief Выполняет выбранное действие; false, если ввод закончился.
+    [[nodiscard]] bool execute(int choice);
+    /// @brief Вызывает действие по номеру пункта меню.
+    void dispatch(int choice);
     /// @brief Читает имя многочлена.
     [[nodiscard]] char read_target_name(std::string_view prompt);
     /// @brief Возвращает выбранный многочлен.
@@ -263,7 +266,6 @@ private:
     std::istream& input_;
     std::ostream& output_;
     Console console_;
-    PolynomialView polynomial_view_;
     polynomial::Polynomial polynomial_a_;
     polynomial::Polynomial polynomial_b_;
 };
@@ -281,6 +283,10 @@ private:
     void show_menu() const;
     /// @brief Читает пункт главного меню.
     [[nodiscard]] int read_choice();
+    /// @brief Выполняет один шаг главного цикла; false означает завершение.
+    [[nodiscard]] bool step();
+    /// @brief Запускает выбранный раздел; false, если ввод закончился.
+    [[nodiscard]] bool run_choice(int choice);
     /// @brief Выполняет операцию класса.
     void run_tic_tac_toe();
     /// @brief Выполняет операцию класса.
