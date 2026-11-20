@@ -35,9 +35,9 @@ inline constexpr std::size_t kDefaultBoardSize = 3;
 /// @brief Содержимое одной клетки игрового поля.
 /// @details Значения перечисления совпадают с символами текстового формата.
 enum class Mark : char {
-    kEmpty = '.', ///< Клетка свободна.
-    kCross = 'X', ///< В клетке стоит крестик.
-    kNought = 'O' ///< В клетке стоит нолик.
+    kEmpty = '.',  ///< Клетка свободна.
+    kCross = 'X',  ///< В клетке стоит крестик.
+    kNought = 'O', ///< В клетке стоит нолик.
 };
 
 /// @brief Преобразует метку в символ текстового формата.
@@ -275,14 +275,14 @@ private:
 std::ostream& operator<<(std::ostream& out, const TicTacToe& board);
 
 /// @brief Читает поле во временный объект, присваивая цель только при полном успехе.
-/// @param in Входной поток.
+/// @param input Входной поток.
 /// @param board Целевой объект.
-/// @return Ссылка на `in`.
+/// @return Ссылка на `input`.
 /// @details Принимает ровно размер и N строк; остаток потока не потребляется.
 /// @throws InvalidBoardFormatError При отсутствии размера/строки, неверной длине или лексеме.
 /// @throws InvalidBoardSizeError Если размер вне [3, 10].
 /// @throws InvalidMarkError Если встретился недопустимый символ клетки.
-std::istream& operator>>(std::istream& in, TicTacToe& board);
+std::istream& operator>>(std::istream& input, TicTacToe& board);
 
 } // namespace tic_tac_toe
 /// @}
