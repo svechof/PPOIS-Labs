@@ -13,6 +13,7 @@
 #include <ios>
 #include <istream>
 #include <limits>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -56,6 +57,24 @@ bool parse_double(const std::string& text, double& value) {
     parser >> std::ws;
     return parser.eof() && std::isfinite(value);
 }
+bool parse_character(const std::string& text, char& value) {
+    std::istringstream parser(text);
+    if (!(parser >> value)) {
+        return false;
+    }
+    parser >> std::ws;
+    return parser.eof();
+}
+std::optional<tic_tac_toe::Position> parse_move(const std::string& line) {
+    std::istringstream parser(line);
+    int row = 0;
+    int col = 0;
+    std::string extra;
+    if (!(parser >> row >> col) || row < 1 || col < 1 || (parser >> extra)) {
+        return std::nullopt;
+    }
+    return tic_tac_toe::Position{static_cast<std::size_t>(row - 1), static_cast<std::size_t>(col - 1)};
+}
 char uppercase(char value) {
     return static_cast<char>(std::toupper(static_cast<unsigned char>(value)));
 }
@@ -75,28 +94,25 @@ struct ErrorRule {
     std::string_view message;
 };
 
+template <typename Error>
+constexpr ErrorRule make_rule(std::string_view message) {
+    return {&is_current_exception<Error>, message};
+}
+
 constexpr std::array kErrorRules = {
-    ErrorRule{&is_current_exception<UnknownOperationError>, "Неизвестная операция. Используйте +, -, * или /."},
-    ErrorRule{&is_current_exception<tic_tac_toe::InvalidBoardSizeError>,
-              "Недопустимый размер поля. Допустимый размер — от 3 до 10."},
-    ErrorRule{&is_current_exception<tic_tac_toe::CellOccupiedError>, "Клетка уже занята. Выберите другую клетку."},
-    ErrorRule{&is_current_exception<tic_tac_toe::PositionOutOfRangeError>,
-              "Координаты выходят за пределы игрового поля."},
-    ErrorRule{&is_current_exception<tic_tac_toe::InvalidMarkError>, "Недопустимая метка. Используйте X, O или точку."},
-    ErrorRule{&is_current_exception<tic_tac_toe::InvalidBoardFormatError>, "Неверный формат игрового поля."},
-    ErrorRule{&is_current_exception<polynomial::InvalidDegreeError>,
-              "Недопустимая степень многочлена. Допустимы значения от 0 до 1000."},
-    ErrorRule{&is_current_exception<polynomial::CoefficientCountMismatchError>,
-              "Количество коэффициентов не соответствует степени многочлена."},
-    ErrorRule{&is_current_exception<polynomial::CoefficientIndexError>,
-              "Индекс коэффициента выходит за допустимые границы."},
-    ErrorRule{&is_current_exception<polynomial::NonFiniteCoefficientError>,
-              "Коэффициент должен быть конечным числом."},
-    ErrorRule{&is_current_exception<polynomial::DivisionByZeroPolynomialError>,
-              "Деление на нулевой многочлен невозможно."},
-    ErrorRule{&is_current_exception<polynomial::InvalidPolynomialFormatError>,
-              "Неверный формат многочлена. Проверьте степень и коэффициенты."},
-    ErrorRule{&is_current_exception<InputClosedError>, kInputClosedText},
+    make_rule<UnknownOperationError>("Неизвестная операция. Используйте +, -, * или /."),
+    make_rule<tic_tac_toe::InvalidBoardSizeError>("Недопустимый размер поля. Допустимый размер — от 3 до 10."),
+    make_rule<tic_tac_toe::CellOccupiedError>("Клетка уже занята. Выберите другую клетку."),
+    make_rule<tic_tac_toe::PositionOutOfRangeError>("Координаты выходят за пределы игрового поля."),
+    make_rule<tic_tac_toe::InvalidMarkError>("Недопустимая метка. Используйте X, O или точку."),
+    make_rule<tic_tac_toe::InvalidBoardFormatError>("Неверный формат игрового поля."),
+    make_rule<polynomial::InvalidDegreeError>("Недопустимая степень многочлена. Допустимы значения от 0 до 1000."),
+    make_rule<polynomial::CoefficientCountMismatchError>("Количество коэффициентов не соответствует степени многочлена."),
+    make_rule<polynomial::CoefficientIndexError>("Индекс коэффициента выходит за допустимые границы."),
+    make_rule<polynomial::NonFiniteCoefficientError>("Коэффициент должен быть конечным числом."),
+    make_rule<polynomial::DivisionByZeroPolynomialError>("Деление на нулевой многочлен невозможно."),
+    make_rule<polynomial::InvalidPolynomialFormatError>("Неверный формат многочлена. Проверьте степень и коэффициенты."),
+    make_rule<InputClosedError>(kInputClosedText),
 };
 
 // Must be called from a catch handler: it inspects the exception being handled.
@@ -221,13 +237,9 @@ double Console::read_double(std::string_view prompt) {
 char Console::read_character(std::string_view prompt) {
     while (true) {
         const std::string text = read_line(prompt);
-        std::istringstream parser(text);
         char value = '\0';
-        if (parser >> value) {
-            parser >> std::ws;
-            if (parser.eof()) {
-                return value;
-            }
+        if (parse_character(text, value)) {
+            return value;
         }
         print_invalid_input();
     }
@@ -296,7 +308,7 @@ bool TicTacToeMenu::execute(int choice) {
     return true;
 }
 void TicTacToeMenu::dispatch(int choice) {
-    const std::array<std::function<void()>, kTicTacToeActionCount> actions = {{
+    const std::array<std::function<void()>, kTicTacToeActionCount> actions = {
         [this] { play_full_game(); },
         [this] { create_board(); },
         [this] { show_board(); },
@@ -307,7 +319,7 @@ void TicTacToeMenu::dispatch(int choice) {
         [this] { check_winner(); },
         [this] { demonstrate_copy(); },
         [this] { demonstrate_text_format(); },
-    }};
+    };
     actions.at(static_cast<std::size_t>(choice - 1))();
 }
 void TicTacToeMenu::show_menu() const {
@@ -425,25 +437,17 @@ void TicTacToeMenu::demonstrate_text_format() {
 }
 
 void TicTacToeMenu::play_one_turn(const std::string& line) {
-    std::istringstream parser(line);
-    int row = 0;
-    int col = 0;
-    if (!(parser >> row >> col) || row < 1 || col < 1) {
+    const std::optional<tic_tac_toe::Position> position = parse_move(line);
+    if (!position) {
         console_.print_line(messages::kMoveRejected);
         return;
     }
-    std::string extra;
-    if (parser >> extra) {
-        console_.print_line(messages::kMoveRejected);
-        return;
-    }
-    const tic_tac_toe::Position position{static_cast<std::size_t>(row - 1), static_cast<std::size_t>(col - 1)};
     const tic_tac_toe::Mark mark = game_.next_mark();
-    if (!game_.can_place(position, mark)) {
+    if (!game_.can_place(*position, mark)) {
         console_.print_line(messages::kMoveRejected);
         return;
     }
-    game_.place(position, mark);
+    game_.place(*position, mark);
     show_board();
 }
 
@@ -474,7 +478,7 @@ bool PolynomialMenu::execute(int choice) {
     return true;
 }
 void PolynomialMenu::dispatch(int choice) {
-    const std::array<std::function<void()>, kPolynomialActionCount> actions = {{
+    const std::array<std::function<void()>, kPolynomialActionCount> actions = {
         [this] { set_polynomial(); },
         [this] { read_polynomial_text(); },
         [this] { show_polynomials(); },
@@ -488,7 +492,7 @@ void PolynomialMenu::dispatch(int choice) {
         [this] { perform_compound_operation(); },
         [this] { compare_polynomials(); },
         [this] { demonstrate_copy(); },
-    }};
+    };
     actions.at(static_cast<std::size_t>(choice - 1))();
 }
 void PolynomialMenu::show_menu() const {
