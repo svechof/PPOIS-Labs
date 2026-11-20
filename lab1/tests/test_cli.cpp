@@ -117,8 +117,8 @@ TEST(CliTests, C11_PolynomialMenu_BadInputShowsError) {
     Application application(input, output);
     application.run();
     EXPECT_NE(output.str().find("Ошибка: Неверный формат многочлена. "
-                            "Проверьте степень и коэффициенты."),
-          std::string::npos);
+                                "Проверьте степень и коэффициенты."),
+              std::string::npos);
     EXPECT_NE(output.str().find("A: 1 1 2, 2x + 1"), std::string::npos);
 }
 TEST(CliTests, C12_BoardView_ExactRendering) {
@@ -159,6 +159,87 @@ TEST(CliTests, C14_Console_ReadIntegerInRange) {
     std::ostringstream boundary_output;
     Console boundary_console(boundary_input, boundary_output);
     EXPECT_EQ(boundary_console.read_integer_in_range("choice: ", 0, 2), 0);
+}
+TEST(CliTests, C15_Console_ReadDoubleRetriesInvalidInput) {
+    std::istringstream input("abc\n2.5\n");
+    std::ostringstream output;
+    Console console(input, output);
+
+    EXPECT_DOUBLE_EQ(console.read_double("value: "), 2.5);
+    EXPECT_NE(output.str().find("Некорректный ввод"), std::string::npos);
+}
+TEST(CliTests, C16_Console_ReadCharacterRejectsExtraCharacters) {
+    std::istringstream input("XY\nx\n");
+    std::ostringstream output;
+    Console console(input, output);
+
+    EXPECT_EQ(console.read_character("symbol: "), 'x');
+    EXPECT_NE(output.str().find("Некорректный ввод"), std::string::npos);
+}
+TEST(CliTests, C17_PolynomialMenu_CompoundOperationsAndCopy) {
+    const std::string script = "1\nZ\nA\n1\n1 1\n"
+                               "1\nB\n0\n2\n"
+                               "11\n+\n"
+                               "11\n-\n"
+                               "11\n*\n"
+                               "11\n/\n"
+                               "11\n?\n"
+                               "13\n"
+                               "0\n";
+
+    std::istringstream input(script);
+    std::ostringstream output;
+    PolynomialMenu menu(input, output);
+
+    menu.run();
+
+    const std::string text = output.str();
+
+    EXPECT_NE(text.find("Некорректный ввод"), std::string::npos);
+    EXPECT_NE(text.find("x + 3"), std::string::npos);
+    EXPECT_NE(text.find("2x + 2"), std::string::npos);
+    EXPECT_NE(text.find("остаток отброшен"), std::string::npos);
+    EXPECT_NE(text.find("Неизвестная операция"), std::string::npos);
+    EXPECT_NE(text.find("Копия равна A"), std::string::npos);
+    EXPECT_NE(text.find("Присваивание и самоприсваивание выполнены"), std::string::npos);
+}
+TEST(CliTests, C18_PolynomialMenu_CoefficientErrorsAndEvaluation) {
+    const std::string script = "1\nA\n1\n1 2\n"
+                               "4\nA\n5\n"
+                               "5\nA\n-1\n"
+                               "5\nA\n0\ninvalid\n3\n"
+                               "6\nA\ninvalid\n2\n"
+                               "0\n";
+
+    std::istringstream input(script);
+    std::ostringstream output;
+    PolynomialMenu menu(input, output);
+
+    menu.run();
+
+    const std::string text = output.str();
+
+    EXPECT_NE(text.find("Индекс коэффициента выходит за допустимые границы."), std::string::npos);
+    EXPECT_NE(text.find("Некорректный ввод"), std::string::npos);
+    EXPECT_NE(text.find("p(2) = 7"), std::string::npos);
+}
+TEST(CliTests, C19_TicTacToeMenu_ValidationErrors) {
+    const std::string script = "2\n2\n"
+                               "6\n1\n1\n?\n"
+                               "5\n4\n1\n"
+                               "0\n";
+
+    std::istringstream input(script);
+    std::ostringstream output;
+    TicTacToeMenu menu(input, output);
+
+    menu.run();
+
+    const std::string text = output.str();
+
+    EXPECT_NE(text.find("Недопустимый размер поля"), std::string::npos);
+    EXPECT_NE(text.find("Недопустимая метка"), std::string::npos);
+    EXPECT_NE(text.find("Координаты выходят за пределы игрового поля"), std::string::npos);
 }
 
 } // namespace
