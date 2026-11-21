@@ -48,14 +48,24 @@ namespace detail {
 /// @brief Аллокатор, использующий парные функции выделения и освобождения new[].
 template <typename T> class NewArrayAllocator {
 public:
+    /// @brief Тип элементов, память для которых выделяет аллокатор.
     using value_type = T;
 
+    /// @brief Создаёт аллокатор по умолчанию.
     NewArrayAllocator() noexcept = default;
 
+    /// @brief Создаёт аллокатор из аллокатора другого типа.
+    /// @tparam U Тип элементов исходного аллокатора.
+    /// @param other Исходный аллокатор.
     template <typename U> explicit NewArrayAllocator(const NewArrayAllocator<U>& other) noexcept {
         static_cast<void>(other);
     }
 
+    /// @brief Выделяет память для заданного количества элементов.
+    /// @param count Количество элементов.
+    /// @return Указатель на выделенную память.
+    /// @throws std::bad_array_new_length Если размер превышает допустимый.
+    /// @throws std::bad_alloc Если память выделить не удалось.
     [[nodiscard]] T* allocate(std::size_t count) {
         if (count > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
             throw std::bad_array_new_length();
@@ -63,12 +73,21 @@ public:
         return static_cast<T*>(::operator new[](count * sizeof(T)));
     }
 
+    /// @brief Освобождает ранее выделенную память.
+    /// @param memory Указатель на освобождаемую память.
+    /// @param count Количество элементов в выделенной области.
     void deallocate(T* memory, std::size_t count) noexcept {
         static_cast<void>(count);
         ::operator delete[](memory);
     }
 };
 
+/// @brief Проверяет равенство аллокаторов разных типов.
+/// @tparam T Тип элементов первого аллокатора.
+/// @tparam U Тип элементов второго аллокатора.
+/// @param lhs Первый аллокатор.
+/// @param rhs Второй аллокатор.
+/// @return Всегда `true`, поскольку аллокаторы не хранят состояние.
 template <typename T, typename U>
 [[nodiscard]] bool operator==(const NewArrayAllocator<T>& lhs, const NewArrayAllocator<U>& rhs) noexcept {
     static_cast<void>(lhs);
@@ -76,6 +95,12 @@ template <typename T, typename U>
     return true;
 }
 
+/// @brief Проверяет неравенство аллокаторов разных типов.
+/// @tparam T Тип элементов первого аллокатора.
+/// @tparam U Тип элементов второго аллокатора.
+/// @param lhs Первый аллокатор.
+/// @param rhs Второй аллокатор.
+/// @return Всегда `false`, поскольку аллокаторы не хранят состояние.
 template <typename T, typename U>
 [[nodiscard]] bool operator!=(const NewArrayAllocator<T>& lhs, const NewArrayAllocator<U>& rhs) noexcept {
     static_cast<void>(lhs);
